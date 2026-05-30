@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="om">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#ff9800">
+    <meta name="description" content="Ethio Delivery Hub - Connecting cargo owners with truck drivers across Ethiopia">
+    <title>Ethio Hub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --primary: #ff9800;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #ffffff;
+            --muted: #94a3b8;
+            --border: rgba(255,255,255,0.08);
+            --admin: #ef4444;
+        }
+        .light-mode {
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --border: rgba(15,23,42,0.08);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:Arial,Helvetica,sans-serif; }
+        body { background:#020617; display:flex; justify-content:center; height:100dvh; overflow:hidden; }
+        .app { width:100%; max-width:420px; height:100dvh; background:var(--bg); color:var(--text); overflow:hidden; position:relative; display:flex; flex-direction:column; transition:background 0.3s, color 0.3s; }
+        .header { display:flex; justify-content:space-between; align-items:center; padding:18px; background:rgba(0,0,0,0.2); backdrop-filter:blur(10px); z-index:100; flex-shrink:0; }
+        .logo { font-size:22px; font-weight:bold; }
+        .logo span { color:var(--primary); }
+        .icon-btn, .lang-btn { background:var(--primary); border:none; padding:8px 12px; border-radius:10px; font-weight:bold; cursor:pointer; color:white; font-size:13px; }
+        .page { flex:1; overflow-y:auto; display:none; padding-bottom:120px; }
+        .page.active { display:block; }
+        .search-box { padding:15px; }
+        .search-box input { width:100%; padding:14px; border:none; border-radius:14px; background:var(--card); color:var(--text); outline:none; font-size:15px; }
+        .card { background:var(--card); margin:10px 15px; padding:18px; border-radius:18px; border:1px solid var(--border); position:relative; }
+        .card h3 { color:var(--primary); margin-bottom:8px; font-size:16px; }
+        .card p { color:var(--muted); font-size:14px; margin-bottom:4px; }
+        .price { color:#22c55e; font-weight:bold; font-size:18px; margin-top:8px; }
+        .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:bold; margin-bottom:8px; }
+        .badge-load { background:rgba(255,152,0,0.15); color:var(--primary); }
+        .badge-truck { background:rgba(34,197,94,0.15); color:#22c55e; }
+        .badge-admin { background:rgba(239,68,68,0.15); color:#ef4444; }
+        .card-img { width:100%; border-radius:12px; margin-bottom:12px; max-height:160px; object-fit:cover; display:block; background:#333; }
+        .card-actions { display:flex; gap:8px; margin-top:12px; }
+        .btn-call { flex:1; padding:10px; border:none; border-radius:10px; background:var(--primary); color:white; font-weight:bold; cursor:pointer; font-size:14px; }
+        .btn-del { padding:10px 14px; border:none; border-radius:10px; background:rgba(239,68,68,0.15); color:#ef4444; cursor:pointer; font-size:14px; }
+        .btn-edit { padding:10px 14px; border:none; border-radius:10px; background:rgba(34,197,94,0.15); color:#22c55e; cursor:pointer; font-size:14px; }
+        .form-box { padding:20px; }
+        .form-box h2 { color:var(--primary); margin-bottom:18px; font-size:18px; }
+        .field { margin-bottom:15px; }
+        .field label { display:block; margin-bottom:8px; color:var(--muted); font-size:14px; }
+        .field input, .field select, .field textarea { width:100%; padding:14px; border:none; border-radius:12px; background:var(--card); color:var(--text); outline:none; border:1px solid var(--border); font-size:15px; }
+        .field textarea { height:80px; resize:none; }
+        .field select option { background:var(--card); }
+        .btn { width:100%; padding:15px; border:none; border-radius:14px; background:var(--primary); font-size:16px; font-weight:bold; cursor:pointer; color:white; margin-top:5px; }
+        .btn-secondary { background:transparent; border:1px solid var(--primary); color:var(--primary); margin-top:5px; }
+        .btn-danger { background:#ef4444; }
+        .btn:disabled { opacity:0.6; cursor:not-allowed; }
+        .bottom-nav { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:90%; max-width:380px; height:70px; background:var(--card); display:flex; justify-content:space-around; align-items:center; border-radius:20px; border:1px solid var(--border); z-index:1000; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
+        .nav-btn { background:none; border:none; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; font-size:12px; padding:8px 12px; }
+        .nav-btn.active { color:var(--primary); }
+        .nav-btn i { font-size:20px; }
+        .drawer { position:fixed; top:0; left:-270px; width:260px; height:100%; background:var(--card); padding:20px; transition:0.2s; z-index:2000; border-right:1px solid var(--border); }
+        .drawer.active { left:0; }
+        .drawer-item { padding:15px; border-radius:12px; margin-bottom:10px; cursor:pointer; background:rgba(255,255,255,0.04); color:var(--text); font-size:15px; display:flex; align-items:center; gap:10px; }
+        .drawer-item:hover { background:rgba(255,152,0,0.1); color:var(--primary); }
+        .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; z-index:1500; }
+        .overlay.active { display:block; }
+        .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; padding:20px; z-index:3000; }
+        .modal.active { display:flex; }
+        .modal-content { width:100%; max-width:350px; background:var(--card); padding:25px; border-radius:20px; border:1px solid var(--border); }
+        .modal-content h3 { color:var(--primary); margin-bottom:15px; }
+        .toggle-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
+        .toggle-row label { color:var(--text); font-size:15px; }
+        .switch { position:relative; display:inline-block; width:48px; height:26px; }
+        .switch input { opacity:0; width:0; height:0; }
+        .slider { position:absolute; cursor:pointer; inset:0; background:#475569; border-radius:26px; transition:0.3s; }
+        .slider::before { content:""; position:absolute; height:20px; width:20px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.3s; }
+        input:checked + .slider { background:var(--primary); }
+        input:checked + .slider::before { transform:translateX(22px); }
+        .loading { text-align:center; padding:40px 20px; color:var(--muted); }
+        .loading i { font-size:32px; color:var(--primary); margin-bottom:10px; animation:spin 1s linear infinite; display:block; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .empty-state { text-align:center; padding:60px 20px; }
+        .empty-state i { font-size:48px; color:var(--muted); margin-bottom:15px; display:block; opacity:0.4; }
+        .empty-state p { color:var(--muted); font-size:15px; }
+        .toast { position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:#1e293b; color:white; padding:12px 24px; border-radius:12px; border:1px solid var(--border); z-index:9999; font-size:14px; opacity:0; transition:opacity 0.2s; pointer-events:none; white-space:nowrap; }
+        .toast.show { opacity:1; }
+        .profile-card { background:var(--card); margin:15px; padding:25px; border-radius:18px; border:1px solid var(--border); text-align:center; position:relative; }
+        .profile-avatar { width:80px; height:80px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; font-size:32px; color:white; margin:0 auto 15px; position:relative; cursor:pointer; overflow:hidden; }
+        .profile-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+        .profile-avatar .avatar-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.3s; border-radius:50%; }
+        .profile-avatar:hover .avatar-overlay { opacity:1; }
+        .profile-card h2 { font-size:20px; margin-bottom:5px; display:flex; align-items:center; justify-content:center; gap:8px; }
+        .profile-card p { color:var(--muted); font-size:14px; }
+        .edit-icon { font-size:14px; color:var(--primary); cursor:pointer; }
+        .stats-row { display:flex; gap:10px; margin:15px; }
+        .stat-card { flex:1; background:var(--card); padding:15px; border-radius:14px; border:1px solid var(--border); text-align:center; }
+        .stat-card .num { font-size:22px; font-weight:bold; color:var(--primary); }
+        .stat-card .lbl { font-size:12px; color:var(--muted); margin-top:4px; }
+        .auth-container { padding:40px 20px; text-align:center; }
+        .auth-container input { width:100%; padding:14px; margin-bottom:15px; border:none; border-radius:12px; background:var(--card); color:var(--text); font-size:16px; border:1px solid var(--border); }
+        .image-preview { width:100%; border-radius:12px; max-height:160px; object-fit:cover; display:none; margin-top:10px; background:#333; }
+        .post-owner { font-size:11px; color:var(--muted); margin-top:5px; padding-top:5px; border-top:1px solid var(--border); }
+        .auth-tabs { display:flex; gap:10px; margin-bottom:20px; }
+        .auth-tab { flex:1; padding:10px; background:var(--card); border:1px solid var(--border); border-radius:10px; cursor:pointer; }
+        .auth-tab.active { background:var(--primary); color:white; }
+        #map { height: 350px; width: 100%; border-radius: 16px; margin-top: 15px; }
+        .chat-container { height: 450px; display: flex; flex-direction: column; }
+        .chat-messages { flex:1; overflow-y:auto; padding:15px; }
+        .chat-message { margin-bottom:15px; display:flex; flex-direction:column; }
+        .chat-message.sent { align-items:flex-end; }
+        .chat-message.received { align-items:flex-start; }
+        .chat-bubble { max-width:80%; padding:10px 15px; border-radius:18px; margin-bottom:4px; }
+        .chat-message.sent .chat-bubble { background:var(--primary); color:white; border-bottom-right-radius:4px; }
+        .chat-message.received .chat-bubble { background:var(--card); border-bottom-left-radius:4px; }
+        .chat-time { font-size:10px; color:var(--muted); margin:0 10px; }
+        .chat-input { display:flex; gap:10px; padding:15px; background:var(--card); border-top:1px solid var(--border); }
+        .chat-input input { flex:1; padding:12px; border:none; border-radius:20px; background:var(--bg); color:var(--text); outline:none; }
+        .chat-input button { padding:12px 20px; border:none; border-radius:20px; background:var(--primary); color:white; cursor:pointer; }
+        .users-list { max-height: 400px; overflow-y: auto; }
+        .user-item { padding:15px; border-bottom:1px solid var(--border); cursor:pointer; display:flex; align-items:center; gap:10px; }
+        .user-item:hover { background:rgba(255,152,0,0.1); }
+        .user-avatar { width:40px; height:40px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; }
+        .user-info { flex:1; }
+        .user-name { font-weight:bold; }
+        .user-email { font-size:11px; color:var(--muted); }
+        .location-btn { background:var(--primary); border:none; padding:8px 12px; border-radius:10px; color:white; margin-top:10px; cursor:pointer; }
+        .admin-panel { background:rgba(239,68,68,0.1); border:1px solid var(--admin); }
+        .admin-header { background:var(--admin); color:white; padding:10px; border-radius:10px; margin-bottom:15px; text-align:center; }
+        .footer { text-align: center; padding: 15px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 10px; }
+        .logout-btn { background: #ef4444; color: white; margin: 20px 15px; width: calc(100% - 30px); }
+        .profile-actions { padding: 0 15px; }
+        .profile-action-btn { width:100%; padding:15px; border:none; border-radius:14px; font-size:16px; font-weight:bold; cursor:pointer; margin-top:10px; display:flex; align-items:center; justify-content:center; gap:10px; background:var(--card); color:var(--text); border:1px solid var(--border); transition:all 0.3s; }
+        .profile-action-btn:hover { background:var(--primary); color:white; }
+        .profile-action-btn.danger-btn { background:transparent; color:var(--admin); border-color:var(--admin); }
+        .profile-action-btn.danger-btn:hover { background:var(--admin); color:white; }
+    </style>
+</head>
+<body>
+<div class="app" id="app">
+    <div class="toast" id="toast"></div>
+    <div class="overlay" id="overlay" onclick="toggleDrawer()"></div>
+
+    <div class="drawer" id="drawer">
+        <h2 id="menuTitle" style="margin-bottom:20px; color:var(--primary);">Menu</h2>
+        <div class="drawer-item" id="adminMenuItem" style="display:none;" onclick="openAdminPanel()"><i class="fa-solid fa-crown"></i><span>Admin Panel</span></div>
+        <div class="drawer-item" onclick="openSettings()"><i class="fa-solid fa-gear"></i><span id="drawerSettings">Settings</span></div>
+        <div class="drawer-item" onclick="openAbout()"><i class="fa-solid fa-circle-info"></i><span id="drawerAbout">About</span></div>
+        <div class="drawer-item" onclick="openContact()"><i class="fa-solid fa-phone"></i><span id="drawerContact">Contact</span></div>
+    </div>
+
+    <div class="header">
+        <button class="icon-btn" onclick="toggleDrawer()"><i class="fa-solid fa-bars"></i></button>
+        <div class="logo">Ethio <span>Hub</span></div>
+        <button class="lang-btn" onclick="changeLang()" id="langBtn">EN</button>
+    </div>
+
+    <!-- Auth Page -->
+    <div class="page active" id="authPage">
+        <div class="auth-container">
+            <h2 style="color:var(--primary); margin-bottom:20px;">Ethio Delivery Hub</h2>
+            <div class="auth-tabs">
+                <div class="auth-tab active" onclick="switchAuthTab('login')" id="loginTab">Login</div>
+                <div class="auth-tab" onclick="switchAuthTab('signup')" id="signupTab">Sign Up</div>
+            </div>
+            
+            <!-- Login Form -->
+            <div id="loginForm">
+                <input type="email" id="loginEmail" placeholder="Email">
+                <input type="password" id="loginPassword" placeholder="Password">
+                <button class="btn" onclick="loginWithEmail()">Login</button>
+            </div>
+            
+            <!-- Signup Form -->
+            <div id="signupForm" style="display:none;">
+                <input type="text" id="signupName" placeholder="Full Name">
+                <input type="email" id="signupEmail" placeholder="Email">
+                <input type="tel" id="signupPhone" placeholder="Phone Number">
+                <input type="password" id="signupPassword" placeholder="Password (min 6 chars)">
+                <button class="btn" onclick="signupWithEmail()">Create Account</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Pages -->
+    <div id="mainApp" style="display:none; flex-direction:column; flex:1;">
+        <div class="page" id="homePage">
+            <div class="search-box">
+                <input type="search" id="searchInput" placeholder="Search..." onkeyup="searchPosts()">
+            </div>
+            <div id="postsContainer"><div class="loading"><i class="fa-solid fa-spinner"></i> Loading...</div></div>
+        </div>
+
+        <div class="page" id="addPage">
+            <div class="form-box">
+                <h2 id="addPageTitle">New Post</h2>
+                <button class="btn" id="btnPostTop" onclick="submitPost()" style="margin-bottom:20px;">Post</button>
+                <div class="field"><label id="lblUserType">User Type</label>
+                    <select id="role"><option value="load" id="optLoad">Has Cargo</option><option value="truck" id="optTruck">Has Truck</option></select></div>
+                <div class="field"><label id="lblTitle">Name</label><input type="text" id="title" placeholder="e.g., Coffee beans, Truck for rent"></div>
+                <div class="field"><label id="lblRoute">Route</label><input type="text" id="route" placeholder="e.g., Addis - Dire Dawa"></div>
+                <div class="field"><label id="lblPhone">Phone</label><input type="tel" id="phone" placeholder="09XXXXXXXX"></div>
+                <div class="field"><label id="lblPrice">Price (Birr)</label><input type="number" id="price" min="0" placeholder="0"></div>
+                <div class="field"><label id="lblImg">Item Image (optional)</label><input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)"><img id="imgPreview" class="image-preview" alt="preview"></div>
+                <div class="field"><label id="lblNote">Note (optional)</label><textarea id="note" placeholder="Additional details..."></textarea></div>
+                <button class="btn" id="btnPostBottom" onclick="submitPost()">Post</button>
+            </div>
+        </div>
+
+        <div class="page" id="mapPage">
+            <div style="padding:20px;">
+                <h3 style="color:var(--primary); margin-bottom:10px;">📍 Live Map</h3>
+                <button class="location-btn" onclick="getUserLocation()"><i class="fa-solid fa-location-dot"></i> Share My Location</button>
+                <div id="map"></div>
+                <p style="font-size:12px; color:var(--muted); margin-top:10px;">Tap on markers to see user locations</p>
+            </div>
+        </div>
+
+        <div class="page" id="chatPage">
+            <div style="padding:15px;">
+                <h3 style="color:var(--primary); margin-bottom:10px;">💬 Messages</h3>
+                <div id="chatUsersList" class="users-list"></div>
+                <div id="chatConversation" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <button class="icon-btn" onclick="backToUsers()" style="background:transparent;">← Back</button>
+                        <span id="chatWithName"></span>
+                    </div>
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chatMessages"></div>
+                        <div class="chat-input">
+                            <input type="text" id="messageInput" placeholder="Type a message...">
+                            <button onclick="sendMessage()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page" id="profilePage">
+            <div class="profile-card">
+                <div class="profile-avatar" onclick="document.getElementById('profilePhotoInput').click()">
+                    <img id="profileAvatarImg" style="display:none;" alt="Profile">
+                    <i class="fa-solid fa-user" id="profileAvatarIcon"></i>
+                    <div class="avatar-overlay">
+                        <i class="fa-solid fa-camera"></i>
+                    </div>
+                </div>
+                <input type="file" id="profilePhotoInput" accept="image/*" style="display:none;" onchange="updateProfilePhoto(event)">
+                <h2>
+                    <span id="profileName">User</span>
+                    <i class="fa-solid fa-pen-to-square edit-icon" onclick="editProfileField('name')"></i>
+                </h2>
+                <p>
+                    <span id="profileEmail"></span>
+                </p>
+                <p>
+                    📱 <span id="profilePhone">Not set</span>
+                    <i class="fa-solid fa-pen-to-square edit-icon" onclick="editProfileField('phone')" style="margin-left:5px;"></i>
+                </p>
+                <p style="font-size:12px; color:var(--muted); margin-top:8px;">
+                    🕐 Member since: <span id="profileMemberSince">-</span>
+                </p>
+                <div id="adminBadge" style="display:none; margin-top:10px;"><span class="badge badge-admin">👑 Admin</span></div>
+            </div>
+            <div class="stats-row">
+                <div class="stat-card"><div class="num" id="statTotal">0</div><div class="lbl" id="statTotalLbl">My Posts</div></div>
+                <div class="stat-card"><div class="num" id="statLoad">0</div><div class="lbl" id="statLoadLbl">Cargo</div></div>
+                <div class="stat-card"><div class="num" id="statTruck">0</div><div class="lbl" id="statTruckLbl">Trucks</div></div>
+            </div>
+            <div class="profile-actions">
+                <button class="profile-action-btn" onclick="openSettings()">
+                    <i class="fa-solid fa-gear"></i>
+                    Settings
+                </button>
+                <button class="profile-action-btn" onclick="openAbout()">
+                    <i class="fa-solid fa-circle-info"></i>
+                    About
+                </button>
+                <button class="profile-action-btn" onclick="openContact()">
+                    <i class="fa-solid fa-phone"></i>
+                    Contact
+                </button>
+                <button class="profile-action-btn danger-btn" onclick="logout()">
+                    <i class="fa-solid fa-sign-out-alt"></i>
+                    Logout
+                </button>
+            </div>
+        </div>
+        
+        <!-- Admin Panel Page -->
+        <div class="page" id="adminPage">
+            <div style="padding:20px;">
+                <div class="admin-header">
+                    <h3><i class="fa-solid fa-crown"></i> Admin Dashboard</h3>
+                    <p>Manage all users and posts</p>
+                </div>
+                <div class="stats-row">
+                    <div class="stat-card"><div class="num" id="adminTotalUsers">0</div><div class="lbl">Total Users</div></div>
+                    <div class="stat-card"><div class="num" id="adminTotalPosts">0</div><div class="lbl">Total Posts</div></div>
+                </div>
+                <h4 style="color:var(--primary); margin:15px 0 10px;">All Posts</h4>
+                <div id="adminPostsList"></div>
+                <h4 style="color:var(--primary); margin:15px 0 10px;">All Users</h4>
+                <div id="adminUsersList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-nav" id="bottomNav" style="display:none;">
+        <button class="nav-btn active" onclick="showPage('homePage',this)"><i class="fa-solid fa-house"></i><span>Home</span></button>
+        <button class="nav-btn" onclick="showPage('addPage',this)"><i class="fa-solid fa-plus"></i><span>Add</span></button>
+        <button class="nav-btn" onclick="showPage('mapPage',this)"><i class="fa-solid fa-map"></i><span>Map</span></button>
+        <button class="nav-btn" onclick="showPage('chatPage',this)"><i class="fa-solid fa-message"></i><span>Chat</span></button>
+        <button class="nav-btn" onclick="showPage('profilePage',this)"><i class="fa-solid fa-user"></i><span>Profile</span></button>
+    </div>
+
+    <div class="footer" id="footer" style="display:none;">
+        © 2025 Ethio Delivery Hub | Developed by Desta Abebe
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div class="modal" id="editProfileModal">
+        <div class="modal-content">
+            <h3 id="editProfileTitle">Edit Profile</h3>
+            <div class="field">
+                <label id="editFieldLabel">Field</label>
+                <input type="text" id="editFieldInput" placeholder="Enter new value">
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-secondary" onclick="closeEditProfileModal()">Cancel</button>
+                <button class="btn" onclick="saveProfileField()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="settingsModal"><div class="modal-content"><h3 id="settingsTitle">Settings</h3><div class="toggle-row"><label id="themeLbl">Light Mode</label><label class="switch"><input type="checkbox" id="themeSwitch" onchange="toggleTheme()"><span class="slider"></span></label></div><button class="btn" onclick="closeSettings()">Close</button></div></div>
+    <div class="modal" id="aboutModal"><div class="modal-content"><h3>About</h3><p>Ethio Delivery Hub v4.0<br>Connecting cargo owners with truck drivers across Ethiopia</p><br><p style="font-size:12px;">© 2024 Desta Abebe</p><br><button class="btn" onclick="closeAbout()">Close</button></div></div>
+    <div class="modal" id="contactModal"><div class="modal-content"><h3 id="contactTitle">Contact</h3><p><i class="fa-solid fa-phone"></i> 0983776626<br><i class="fa-solid fa-phone"></i> 0913099801<br><i class="fa-solid fa-envelope"></i> ethiodeliveryhub@gmail.com</p><br><button class="btn" onclick="closeContact()">Close</button></div></div>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
+            "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
+            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js",
+            "firebase/storage": "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js"
+        }
+    }
+</script>
+
+<script type="module">
+    import { initializeApp } from "firebase/app";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut } from "firebase/auth";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, updateDoc, where, onSnapshot, setDoc, getDoc, limit, startAfter, serverTimestamp } from "firebase/firestore";
+    import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAQnXglRvWW3Z15kf--pHF-k6BxIa4ksqI",
+        authDomain: "ethio-delivery-493df.firebaseapp.com",
+        projectId: "ethio-delivery-493df",
+        storageBucket: "ethio-delivery-493df.firebasestorage.app",
+        messagingSenderId: "1096045910734",
+        appId: "1:1096045910734:web:6fa56402c0817f47704e9f"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    let currentUser = null;
+    let currentUserData = null;
+    let allPosts = [];
+    let map = null;
+    let markers = [];
+    let currentChatUser = null;
+    let messagesUnsubscribe = null;
+    let currentLang = "en";
+    let currentEditId = null;
+    let lastVisibleDoc = null;
+    let isLoadingMore = false;
+    let editingField = null;
+    
+    const ADMIN_EMAILS = ["ethiodeliveryhub@gmail.com", "admin@ethiohub.com"];
+    const POSTS_PER_PAGE = 10;
+
+    // Language Dictionary
+    const dict = {
+        om: { home:"Mana", add:"Dabali", map:"Kaartaa", chat:"Haasaa", profile:"Profile", settings:"Sajoo", about:"Waa'ee", contact:"Quunnamtii", empty:"Post hin jiru", loading:"Fe'aa...", userType:"Gosa Fayyadamaa", name:"Maqaa", route:"Daandii", phone:"Bilbila", price:"Gatii (Birr)", img:"Suuraa", note:"Yaadannoo", postBtn:"Maxxansi", search:"Barbaadi...", optLoad:"Meeshaa qaba", optTruck:"Konkolaataa qaba", call:"Bilbili", del:"Haqii", edit:"Gulaali", totalPosts:"Posts Koo", cargo:"Meeshaa", trucks:"Konkolaataa", lightMode:"Haala Ifaa", fillAll:"Dirreewwan hunda guuti", postSuccess:"Milkaa'e!", update:"Haaromsi", settingsTitle:"Sajoo" },
+        am: { home:"መነሻ", add:"ጨምር", map:"ካርታ", chat:"መልእክት", profile:"መገለጫ", settings:"ቅንብሮች", about:"ስለ", contact:"አግኙን", empty:"ምንም ልጥፍ የለም", loading:"በመጫን...", userType:"የተጠቃሚ አይነት", name:"ስም", route:"መንገድ", phone:"ስልክ", price:"ዋጋ (ብር)", img:"ምስል", note:"ማስታወሻ", postBtn:"ልጥፍ", search:"ፈልግ...", optLoad:"ዕቃ አለው", optTruck:"ትራክ አለው", call:"ደውል", del:"ሰርዝ", edit:"አርትዕ", totalPosts:"ልጥፎቼ", cargo:"ዕቃ", trucks:"ትራኮች", lightMode:"ብርሃን", fillAll:"ሁሉንም ይሙሉ", postSuccess:"ልጥፍ ተሳካ!", update:"አዘምን", settingsTitle:"ቅንብሮች" },
+        en: { home:"Home", add:"Add", map:"Map", chat:"Chat", profile:"Profile", settings:"Settings", about:"About", contact:"Contact", empty:"No posts", loading:"Loading...", userType:"User Type", name:"Name", route:"Route", phone:"Phone", price:"Price (Birr)", img:"Image", note:"Note", postBtn:"Post", search:"Search...", optLoad:"Has Cargo", optTruck:"Has Truck", call:"Call", del:"Delete", edit:"Edit", totalPosts:"My Posts", cargo:"Cargo", trucks:"Trucks", lightMode:"Light Mode", fillAll:"Fill all fields", postSuccess:"Posted!", update:"Update", settingsTitle:"Settings" }
+    };
+    
+    function t(key) { return dict[currentLang]?.[key] || key; }
+    
+    function escapeHtml(str) { if(!str) return ""; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
+    
+    function showToast(msg, type = '') { 
+        const el = document.getElementById("toast"); 
+        el.innerText = msg; 
+        el.className = 'toast ' + type;
+        el.classList.add("show"); 
+        setTimeout(() => el.classList.remove("show"), 1500); 
+    }
+
+    function isAdmin() { return currentUser && ADMIN_EMAILS.includes(currentUser.email); }
+    
+    function showAdminFeatures() {
+        document.getElementById("adminMenuItem").style.display = isAdmin() ? "flex" : "none";
+        document.getElementById("adminBadge").style.display = isAdmin() ? "block" : "none";
+    }
+
+    function applyLang() { 
+        document.getElementById("langBtn").innerText = currentLang==="om"?"Oro":(currentLang==="am"?"አማ":"EN");
+        document.getElementById("drawerSettings").innerText = t("settings");
+        document.getElementById("drawerAbout").innerText = t("about");
+        document.getElementById("drawerContact").innerText = t("contact");
+        if(document.getElementById("searchInput")) document.getElementById("searchInput").placeholder = t("search");
+        document.getElementById("addPageTitle").innerHTML = "➕ " + t("add");
+        document.getElementById("lblUserType").innerText = t("userType");
+        document.getElementById("optLoad").innerText = t("optLoad");
+        document.getElementById("optTruck").innerText = t("optTruck");
+        document.getElementById("lblTitle").innerText = t("name");
+        document.getElementById("lblRoute").innerText = t("route");
+        document.getElementById("lblPhone").innerText = t("phone");
+        document.getElementById("lblPrice").innerText = t("price");
+        document.getElementById("lblImg").innerText = t("img");
+        document.getElementById("lblNote").innerText = t("note");
+        document.getElementById("btnPostTop").innerText = currentEditId ? t("update") : t("postBtn");
+        document.getElementById("btnPostBottom").innerText = currentEditId ? t("update") : t("postBtn");
+        document.getElementById("statTotalLbl").innerText = t("totalPosts");
+        document.getElementById("statLoadLbl").innerText = t("cargo");
+        document.getElementById("statTruckLbl").innerText = t("trucks");
+        document.getElementById("themeLbl").innerText = t("lightMode");
+        document.getElementById("settingsTitle").innerText = t("settingsTitle");
+        renderPosts(allPosts);
+    }
+
+    window.changeLang = () => { 
+        currentLang = currentLang==="om"?"am":(currentLang==="am"?"en":"om"); 
+        localStorage.setItem("lang", currentLang);
+        applyLang(); 
+    };
+
+    if(localStorage.getItem("theme") === "light") { 
+        document.getElementById("themeSwitch").checked = true; 
+        document.getElementById("app").classList.add("light-mode"); 
+    }
+    
+    const savedLang = localStorage.getItem("lang");
+    if(savedLang) currentLang = savedLang;
+
+    window.toggleTheme = () => { 
+        document.getElementById("app").classList.toggle("light-mode", document.getElementById("themeSwitch").checked); 
+        localStorage.setItem("theme", document.getElementById("themeSwitch").checked ? "light" : "dark"); 
+    };
+
+    window.previewImage = function(e) {
+        const file = e.target.files[0];
+        const preview = document.getElementById("imgPreview");
+        if(file) { const reader = new FileReader(); reader.onload = ev => { preview.src = ev.target.result; preview.style.display = "block"; }; reader.readAsDataURL(file); }
+        else { preview.style.display = "none"; }
+    };
+
+    function renderPosts(data) {
+        const container = document.getElementById("postsContainer");
+        if(!container) return;
+        if(!data || data.length === 0) { container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-box-open"></i><p>${t("empty")}</p></div>`; return; }
+        container.innerHTML = data.map(post => `
+            <div class="card">
+                ${post.imageUrl ? `<img class="card-img" src="${post.imageUrl}" alt="img" loading="lazy">` : ""}
+                <span class="badge ${post.role==='load'?'badge-load':'badge-truck'}">${post.role==='load'?t("optLoad"):t("optTruck")}</span>
+                <h3>${escapeHtml(post.title)}</h3>
+                <p><i class="fa-solid fa-location-dot"></i> ${escapeHtml(post.route)}</p>
+                ${post.note ? `<p><i class="fa-solid fa-note-sticky"></i> ${escapeHtml(post.note)}</p>` : ""}
+                <div class="price">💰 ${escapeHtml(post.price)} Birr</div>
+                <div class="post-owner"><i class="fa-solid fa-user"></i> ${escapeHtml(post.userName || post.userEmail || 'User')}</div>
+                <div class="card-actions">
+                    <button class="btn-call" onclick="window.callNumber('${escapeHtml(post.phone)}')"><i class="fa-solid fa-phone"></i> ${t("call")}</button>
+                    ${post.userId !== currentUser?.uid ? `<button class="btn-edit" onclick="window.startChat('${post.userId}','${escapeHtml(post.userName || post.userEmail || 'User')}')"><i class="fa-solid fa-comment"></i> Chat</button>` : ''}
+                    ${(currentUser && (post.userId === currentUser.uid || isAdmin())) ? `
+                        <button class="btn-edit" onclick="window.editPost('${post.id}')"><i class="fa-solid fa-edit"></i></button>
+                        <button class="btn-del" onclick="window.deletePost('${post.id}')"><i class="fa-solid fa-trash"></i></button>
+                    ` : ''}
+                </div>
+            </div>`).join("");
+    }
+    
+    window.callNumber = (phone) => { window.location.href = `tel:${phone}`; };
+    
+    window.searchPosts = () => { 
+        const v = document.getElementById("searchInput")?.value.toLowerCase() || ''; 
+        renderPosts(allPosts.filter(p => (p.title||"").toLowerCase().includes(v) || (p.route||"").toLowerCase().includes(v))); 
+    };
+    
+    window.showPage = (id, btn) => { 
+        document.querySelectorAll(".page").forEach(p => p.classList.remove("active")); 
+        document.getElementById(id).classList.add("active"); 
+        document.querySelectorAll(".nav-btn").forEach(n => n.classList.remove("active")); 
+        if(btn) btn.classList.add("active");
+        if(id === "mapPage") setTimeout(initMap, 50);
+        if(id === "chatPage") loadChatUsers();
+        if(id === "profilePage") updateProfileDisplay();
+        if(id !== "addPage") { currentEditId = null; document.getElementById("btnPostTop").innerText = t("postBtn"); document.getElementById("btnPostBottom").innerText = t("postBtn"); }
+        document.getElementById("footer").style.display = "block";
+    };
+    
+    window.toggleDrawer = () => { 
+        document.getElementById("drawer").classList.toggle("active"); 
+        document.getElementById("overlay").classList.toggle("active"); 
+    };
+    
+    window.openSettings = () => { 
+        document.getElementById("settingsModal").classList.add("active"); 
+        if(document.getElementById("drawer").classList.contains("active")) toggleDrawer();
+    };
+    window.closeSettings = () => document.getElementById("settingsModal").classList.remove("active");
+    window.openAbout = () => { 
+        document.getElementById("aboutModal").classList.add("active"); 
+        if(document.getElementById("drawer").classList.contains("active")) toggleDrawer();
+    };
+    window.closeAbout = () => document.getElementById("aboutModal").classList.remove("active");
+    window.openContact = () => { 
+        document.getElementById("contactModal").classList.add("active"); 
+        if(document.getElementById("drawer").classList.contains("active")) toggleDrawer();
+    };
+    window.closeContact = () => document.getElementById("contactModal").classList.remove("active");
+
+    // Profile Functions
+    window.updateProfilePhoto = async (event) => {
+        const file = event.target.files[0];
+        if(!file || !currentUser) return;
+        
+        try {
+            const fileName = `profiles/${currentUser.uid}_${Date.now()}`;
+            const storageRef = ref(storage, fileName);
+            await uploadBytes(storageRef, file);
+            const photoURL = await getDownloadURL(storageRef);
+            
+            await updateProfile(currentUser, { photoURL });
+            await updateDoc(doc(db, "users", currentUser.uid), { photoURL });
+            
+            updateProfileDisplay();
+            showToast("Profile photo updated!");
+        } catch(err) {
+            showToast("Error uploading photo: " + err.message, "error");
+        }
+    };
+    
+    window.editProfileField = (field) => {
+        if(!currentUserData) return;
+        editingField = field;
+        const modal = document.getElementById("editProfileModal");
+        const title = document.getElementById("editProfileTitle");
+        const label = document.getElementById("editFieldLabel");
+        const input = document.getElementById("editFieldInput");
+        
+        if(field === 'name') {
+            title.textContent = 'Edit Name';
+            label.textContent = 'Full Name';
+            input.value = currentUserData.name || currentUser.displayName || '';
+            input.placeholder = 'Enter your name';
+        } else if(field === 'phone') {
+            title.textContent = 'Edit Phone';
+            label.textContent = 'Phone Number';
+            input.value = currentUserData.phone || '';
+            input.placeholder = 'Enter phone number';
+        }
+        
+        modal.classList.add("active");
+    };
+    
+    window.closeEditProfileModal = () => {
+        document.getElementById("editProfileModal").classList.remove("active");
+        editingField = null;
+    };
+    
+    window.saveProfileField = async () => {
+        const value = document.getElementById("editFieldInput").value.trim();
+        if(!value || !currentUser) {
+            showToast("Please enter a value", "error");
+            return;
+        }
+        
+        try {
+            const updates = {};
+            if(editingField === 'name') {
+                updates.name = value;
+                await updateProfile(currentUser, { displayName: value });
+            } else if(editingField === 'phone') {
+                updates.phone = value;
+            }
+            
+            await updateDoc(doc(db, "users", currentUser.uid), updates);
+            
+            // Update local data
+            if(currentUserData) {
+                Object.assign(currentUserData, updates);
+            }
+            
+            updateProfileDisplay();
+            closeEditProfileModal();
+            showToast("Profile updated!");
+        } catch(err) {
+            showToast("Error updating: " + err.message, "error");
+        }
+    };
+    
+    function updateProfileDisplay() {
+        if(!currentUser) return;
+        
+        document.getElementById("profileName").innerText = currentUserData?.name || currentUser.displayName || "User";
+        document.getElementById("profileEmail").innerText = currentUser.email || "";
+        document.getElementById("profilePhone").innerText = currentUserData?.phone || "Not set";
+        
+        // Profile photo
+        const photoURL = currentUserData?.photoURL || currentUser.photoURL;
+        const avatarImg = document.getElementById("profileAvatarImg");
+        const avatarIcon = document.getElementById("profileAvatarIcon");
+        
+        if(photoURL) {
+            avatarImg.src = photoURL;
+            avatarImg.style.display = "block";
+            avatarIcon.style.display = "none";
+        } else {
+            avatarImg.style.display = "none";
+            avatarIcon.style.display = "block";
+        }
+        
+        // Member since
+        if(currentUserData?.createdAt) {
+            const date = new Date(currentUserData.createdAt);
+            document.getElementById("profileMemberSince").innerText = date.toLocaleDateString();
+        } else if(currentUser.metadata?.creationTime) {
+            const date = new Date(currentUser.metadata.creationTime);
+            document.getElementById("profileMemberSince").innerText = date.toLocaleDateString();
+        }
+    }
+
+    // Fast Login
+    window.loginWithEmail = async () => {
+        const email = document.getElementById("loginEmail").value.trim();
+        const password = document.getElementById("loginPassword").value;
+        
+        if(!email || !password) { showToast("Enter email and password", "error"); return; }
+        
+        const loginBtn = document.querySelector('#loginForm .btn');
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch(err) { 
+            let message = "Login failed";
+            if(err.code === 'auth/user-not-found') message = "No account found";
+            else if(err.code === 'auth/wrong-password') message = "Wrong password";
+            else if(err.code === 'auth/invalid-email') message = "Invalid email";
+            showToast(message, "error");
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = 'Login';
+        }
+    };
+    
+    // Fast Signup
+    window.signupWithEmail = async () => {
+        const name = document.getElementById("signupName").value.trim();
+        const email = document.getElementById("signupEmail").value.trim();
+        const phone = document.getElementById("signupPhone").value.trim();
+        const password = document.getElementById("signupPassword").value;
+        
+        if(!name || !email || !phone || !password) { showToast("Fill all fields", "error"); return; }
+        if(password.length < 6) { showToast("Password must be 6+ chars", "error"); return; }
+        
+        const signupBtn = document.querySelector('#signupForm .btn');
+        signupBtn.disabled = true;
+        signupBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        
+        try {
+            const result = await createUserWithEmailAndPassword(auth, email, password);
+            await Promise.all([
+                updateProfile(result.user, { displayName: name }),
+                setDoc(doc(db, "users", result.user.uid), {
+                    name, email, phone,
+                    uid: result.user.uid,
+                    createdAt: Date.now()
+                })
+            ]);
+        } catch(err) { 
+            let message = "Signup failed";
+            if(err.code === 'auth/email-already-in-use') message = "Email already exists";
+            showToast(message, "error");
+            signupBtn.disabled = false;
+            signupBtn.innerHTML = 'Create Account';
+        }
+    };
+    
+    window.logout = async () => {
+        await signOut(auth);
+        toggleDrawer();
+    };
+
+    window.switchAuthTab = (tab) => {
+        document.getElementById("loginForm").style.display = tab === "login" ? "block" : "none";
+        document.getElementById("signupForm").style.display = tab === "login" ? "none" : "block";
+        document.getElementById("loginTab").classList.toggle("active", tab === "login");
+        document.getElementById("signupTab").classList.toggle("active", tab !== "login");
+    };
+
+    // Map Functions
+    function initMap() {
+        if(map) { map.invalidateSize(); return; }
+        map = L.map('map').setView([9.03, 38.74], 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        loadLocations();
+    }
+    
+    async function loadLocations() {
+        if(!currentUser || !map) return;
+        const snap = await getDocs(query(collection(db, "locations")));
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+        snap.forEach(docSnap => {
+            const loc = docSnap.data();
+            if(loc.lat && loc.lng) {
+                const marker = L.marker([loc.lat, loc.lng]).addTo(map);
+                marker.bindPopup(`<b>${escapeHtml(loc.userName || 'User')}</b>`);
+                markers.push(marker);
+            }
+        });
+    }
+    
+    window.getUserLocation = () => {
+        if(!navigator.geolocation) { showToast("Geolocation not supported", "error"); return; }
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            await setDoc(doc(db, "locations", currentUser.uid), {
+                lat, lng,
+                userId: currentUser.uid,
+                userName: currentUser.displayName || currentUser.email,
+                updatedAt: Date.now()
+            });
+            if(map) {
+                map.setView([lat, lng], 13);
+                L.marker([lat, lng]).addTo(map).bindPopup("You are here").openPopup();
+            }
+            showToast("Location shared!");
+        }, () => showToast("Could not get location", "error"));
+    };
+    
+    // Chat Functions
+    async function loadChatUsers() {
+        if(!currentUser) return;
+        const usersList = document.getElementById("chatUsersList");
+        usersList.innerHTML = '<div class="loading"><i class="fa-solid fa-spinner"></i></div>';
+        const usersSnap = await getDocs(collection(db, "users"));
+        let users = [];
+        usersSnap.forEach(docSnap => {
+            if(docSnap.id !== currentUser.uid) users.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        if(users.length === 0) {
+            usersList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-users"></i><p>No other users yet</p></div>';
+            return;
+        }
+        usersList.innerHTML = users.map(user => `
+            <div class="user-item" onclick="window.openChat('${user.id}','${escapeHtml(user.name || user.email || 'User')}')">
+                <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
+                <div class="user-info">
+                    <div class="user-name">${escapeHtml(user.name || user.email || 'User')}</div>
+                    <div class="user-email">${escapeHtml(user.email || '')}</div>
+                </div>
+            </div>
+        `).join("");
+    }
+    
+    window.openChat = (userId, userName) => {
+        currentChatUser = { id: userId, name: userName };
+        document.getElementById("chatUsersList").style.display = "none";
+        document.getElementById("chatConversation").style.display = "block";
+        document.getElementById("chatWithName").innerText = userName;
+        loadMessages(userId);
+    };
+    
+    function backToUsers() {
+        if(messagesUnsubscribe) messagesUnsubscribe();
+        document.getElementById("chatUsersList").style.display = "block";
+        document.getElementById("chatConversation").style.display = "none";
+        currentChatUser = null;
+    }
+    window.backToUsers = backToUsers;
+    
+    function loadMessages(otherUserId) {
+        if(messagesUnsubscribe) messagesUnsubscribe();
+        const chatId = [currentUser.uid, otherUserId].sort().join('_');
+        const q = query(collection(db, "chats", chatId, "messages"), orderBy("timestamp", "asc"));
+        messagesUnsubscribe = onSnapshot(q, (snapshot) => {
+            const messagesContainer = document.getElementById("chatMessages");
+            messagesContainer.innerHTML = "";
+            snapshot.forEach(docSnap => {
+                const msg = docSnap.data();
+                const div = document.createElement("div");
+                div.className = `chat-message ${msg.senderId === currentUser.uid ? 'sent' : 'received'}`;
+                const time = msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+                div.innerHTML = `<div class="chat-bubble">${escapeHtml(msg.text)}</div><div class="chat-time">${time}</div>`;
+                messagesContainer.appendChild(div);
+            });
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+    }
+    
+    window.sendMessage = async () => {
+        const input = document.getElementById("messageInput");
+        const text = input.value.trim();
+        if(!text || !currentChatUser) return;
+        const chatId = [currentUser.uid, currentChatUser.id].sort().join('_');
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+            text, senderId: currentUser.uid,
+            senderName: currentUser.displayName || currentUser.email,
+            timestamp: serverTimestamp()
+        });
+        input.value = "";
+    };
+    
+    window.startChat = (userId, userName) => {
+        showPage("chatPage", document.querySelector(".nav-btn"));
+        setTimeout(() => openChat(userId, userName), 100);
+    };
+
+    // Posts Functions
+    async function loadPosts() {
+        if(!currentUser) return;
+        try {
+            const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(POSTS_PER_PAGE));
+            const snap = await getDocs(q);
+            allPosts = [];
+            if(!snap.empty) lastVisibleDoc = snap.docs[snap.docs.length - 1];
+            snap.forEach(docSnap => { allPosts.push({ id: docSnap.id, ...docSnap.data() }); });
+            renderPosts(allPosts);
+            const myPosts = allPosts.filter(p => p.userId === currentUser.uid);
+            document.getElementById("statTotal").innerText = myPosts.length;
+            document.getElementById("statLoad").innerText = myPosts.filter(p => p.role === "load").length;
+            document.getElementById("statTruck").innerText = myPosts.filter(p => p.role === "truck").length;
+        } catch(err) { console.error(err); }
+    }
+
+    window.submitPost = async () => {
+        const title = document.getElementById("title").value.trim();
+        const route = document.getElementById("route").value.trim();
+        const phone = document.getElementById("phone").value.trim();
+        const price = document.getElementById("price").value.trim();
+        const role = document.getElementById("role").value;
+        const note = document.getElementById("note").value.trim();
+        const imageFile = document.getElementById("imageInput").files[0];
+        if(!title || !route || !phone || !price) { showToast(t("fillAll"), "error"); return; }
+        
+        // Disable both buttons
+        const btnTop = document.getElementById("btnPostTop");
+        const btnBottom = document.getElementById("btnPostBottom");
+        if(btnTop) btnTop.disabled = true;
+        if(btnBottom) btnBottom.disabled = true;
+        
+        try {
+            let imageUrl = null;
+            if(imageFile) {
+                const fileName = `posts/${Date.now()}_${imageFile.name}`;
+                const storageRef = ref(storage, fileName);
+                await uploadBytes(storageRef, imageFile);
+                imageUrl = await getDownloadURL(storageRef);
+            }
+            
+            if(currentEditId) {
+                const updateData = { title, route, phone, price, role, note };
+                if(imageUrl) updateData.imageUrl = imageUrl;
+                await updateDoc(doc(db, "posts", currentEditId), updateData);
+                showToast(t("postSuccess"));
+                currentEditId = null;
+                document.getElementById("btnPostTop").innerText = t("postBtn");
+                document.getElementById("btnPostBottom").innerText = t("postBtn");
+            } else {
+                await addDoc(collection(db, "posts"), {
+                    title, route, phone, price, role, note, imageUrl: imageUrl || null,
+                    userId: currentUser.uid,
+                    userName: currentUser.displayName || currentUser.email,
+                    userEmail: currentUser.email,
+                    createdAt: Date.now()
+                });
+                showToast(t("postSuccess"));
+            }
+            
+            document.getElementById("title").value = "";
+            document.getElementById("route").value = "";
+            document.getElementById("phone").value = "";
+            document.getElementById("price").value = "";
+            document.getElementById("note").value = "";
+            document.getElementById("imageInput").value = "";
+            document.getElementById("imgPreview").style.display = "none";
+            await loadPosts();
+            showPage("homePage", document.querySelector(".nav-btn"));
+        } catch(err) { showToast("Error: " + err.message, "error"); }
+        finally { 
+            if(btnTop) btnTop.disabled = false;
+            if(btnBottom) btnBottom.disabled = false;
+        }
+    };
+
+    window.deletePost = async (postId) => {
+        if(!confirm("Delete this post?")) return;
+        try {
+            const post = allPosts.find(p => p.id === postId);
+            if(post?.imageUrl) {
+                try { await deleteObject(ref(storage, post.imageUrl)); } catch(e) {}
+            }
+            await deleteDoc(doc(db, "posts", postId));
+            showToast("Deleted!");
+            await loadPosts();
+            if(isAdmin() && document.getElementById("adminPage").classList.contains("active")) loadAdminData();
+        } catch(err) { showToast("Error deleting", "error"); }
+    };
+
+    window.editPost = async (postId) => {
+        const post = allPosts.find(p => p.id === postId);
+        if(!post || (post.userId !== currentUser?.uid && !isAdmin())) { showToast("Not your post", "error"); return; }
+        currentEditId = postId;
+        document.getElementById("title").value = post.title || "";
+        document.getElementById("route").value = post.route || "";
+        document.getElementById("phone").value = post.phone || "";
+        document.getElementById("price").value = post.price || "";
+        document.getElementById("role").value = post.role || "load";
+        document.getElementById("note").value = post.note || "";
+        document.getElementById("btnPostTop").innerText = t("update");
+        document.getElementById("btnPostBottom").innerText = t("update");
+        showPage("addPage", document.querySelector(".nav-btn"));
+    };
+
+    window.openAdminPanel = () => {
+        if(!isAdmin()) { showToast("Admin access only", "error"); return; }
+        showPage("adminPage", document.querySelector(".nav-btn"));
+        loadAdminData();
+        toggleDrawer();
+    };
+    
+    async function loadAdminData() {
+        if(!isAdmin()) return;
+        const postsSnap = await getDocs(collection(db, "posts"));
+        const usersSnap = await getDocs(collection(db, "users"));
+        document.getElementById("adminTotalPosts").innerText = postsSnap.size;
+        document.getElementById("adminTotalUsers").innerText = usersSnap.size;
+        
+        const adminPostsList = document.getElementById("adminPostsList");
+        adminPostsList.innerHTML = "";
+        postsSnap.forEach(docSnap => {
+            const post = docSnap.data();
+            adminPostsList.innerHTML += `
+                <div class="card" style="margin:10px 0;">
+                    <h3>${escapeHtml(post.title)}</h3>
+                    <p>By: ${escapeHtml(post.userName || post.userEmail || 'User')}</p>
+                    <button class="btn-del" onclick="window.adminDeletePost('${docSnap.id}')" style="margin-top:10px;">Delete Post</button>
+                </div>
+            `;
+        });
+        
+        const adminUsersList = document.getElementById("adminUsersList");
+        adminUsersList.innerHTML = "";
+        usersSnap.forEach(docSnap => {
+            const user = docSnap.data();
+            adminUsersList.innerHTML += `
+                <div class="card" style="margin:10px 0;">
+                    <h3>${escapeHtml(user.name || 'No name')}</h3>
+                    <p>Email: ${escapeHtml(user.email || '')}</p>
+                    <p>Phone: ${escapeHtml(user.phone || '')}</p>
+                    ${user.uid !== currentUser.uid ? `<button class="btn-del" onclick="window.adminDeleteUser('${docSnap.id}')">Delete User</button>` : ''}
+                </div>
+            `;
+        });
+    }
+    
+    window.adminDeletePost = async (postId) => {
+        if(!confirm("Delete this post?")) return;
+        await deleteDoc(doc(db, "posts", postId));
+        showToast("Post deleted");
+        loadAdminData();
+        loadPosts();
+    };
+    
+    window.adminDeleteUser = async (userId) => {
+        if(!confirm("Delete this user and all their posts?")) return;
+        const postsSnap = await getDocs(query(collection(db, "posts"), where("userId", "==", userId)));
+        postsSnap.forEach(async (postDoc) => { await deleteDoc(doc(db, "posts", postDoc.id)); });
+        await deleteDoc(doc(db, "users", userId));
+        showToast("User deleted");
+        loadAdminData();
+        loadPosts();
+    };
+
+    // Fast Auth State Listener
+    onAuthStateChanged(auth, async (user) => {
+        if(user) {
+            currentUser = user;
+            
+            // Show main app immediately
+            document.getElementById("authPage").classList.remove("active");
+            document.getElementById("mainApp").style.display = "flex";
+            document.getElementById("bottomNav").style.display = "flex";
+            document.getElementById("footer").style.display = "block";
+            
+            showAdminFeatures();
+            showPage("homePage", document.querySelector(".nav-btn"));
+            
+            // Load data in background
+            loadUserDataInBackground(user.uid);
+            loadPosts();
+        } else if(!document.getElementById("authPage").classList.contains("active")) {
+            currentUser = null;
+            currentUserData = null;
+            document.getElementById("mainApp").style.display = "none";
+            document.getElementById("bottomNav").style.display = "none";
+            document.getElementById("footer").style.display = "none";
+            document.getElementById("authPage").classList.add("active");
+        }
+    });
+    
+    async function loadUserDataInBackground(uid) 
+    
+    applyLang();
+</script>
+</body>
+</html>
