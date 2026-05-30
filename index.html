@@ -4,1032 +4,851 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#ff9800">
-    <meta name="description" content="Ethio Delivery Hub - Connecting cargo owners with truck drivers across Ethiopia">
-    <title>Ethio Hub</title>
+    <title>Ethio Hub Pro</title>
+    <meta name="description" content="Ethio Hub Pro - Ethiopian logistics platform connecting cargo owners with truck drivers.">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="manifest" href="data:application/json,{'name':'Ethio Hub','short_name':'EthioHub','start_url':'.','display':'standalone','theme_color':'#ff9800','background_color':'#0f172a'}">
     <style>
         :root {
-            --primary: #ff9800;
-            --bg: #0f172a;
-            --card: #1e293b;
-            --text: #ffffff;
-            --muted: #94a3b8;
-            --border: rgba(255,255,255,0.08);
-            --admin: #ef4444;
+            --primary: #ff9800; --primary-dark: #f57c00; --bg: #0f172a; --card: #1e293b;
+            --card-hover: #243447; --text: #ffffff; --muted: #94a3b8; --border: rgba(255,255,255,0.08);
+            --success: #22c55e; --warning: #f59e0b; --danger: #ef4444; --info: #3b82f6;
+            --radius: 16px; --radius-sm: 10px; --star: #f59e0b;
         }
-        .light-mode {
-            --bg: #f1f5f9;
-            --card: #ffffff;
-            --text: #0f172a;
-            --muted: #475569;
-            --border: rgba(15,23,42,0.08);
-        }
-        * { margin:0; padding:0; box-sizing:border-box; font-family:Arial,Helvetica,sans-serif; }
+        .theme-ocean { --primary: #06b6d4; --primary-dark: #0891b2; }
+        .theme-forest { --primary: #10b981; --primary-dark: #059669; }
+        .theme-purple { --primary: #a855f7; --primary-dark: #9333ea; }
+        .theme-sunset { --primary: #ef4444; --primary-dark: #dc2626; }
+        .light-mode { --bg: #f1f5f9; --card: #ffffff; --card-hover: #f8fafc; --text: #0f172a; --muted: #64748b; --border: rgba(0,0,0,0.08); }
+
+        * { margin:0; padding:0; box-sizing:border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         body { background:#020617; display:flex; justify-content:center; height:100dvh; overflow:hidden; }
-        .app { width:100%; max-width:420px; height:100dvh; background:var(--bg); color:var(--text); overflow:hidden; position:relative; display:flex; flex-direction:column; transition:background 0.3s, color 0.3s; }
-        .header { display:flex; justify-content:space-between; align-items:center; padding:18px; background:rgba(0,0,0,0.2); backdrop-filter:blur(10px); z-index:100; flex-shrink:0; }
-        .logo { font-size:22px; font-weight:bold; }
-        .logo span { color:var(--primary); }
-        .icon-btn, .lang-btn { background:var(--primary); border:none; padding:8px 12px; border-radius:10px; font-weight:bold; cursor:pointer; color:white; font-size:13px; }
+        .app { width:100%; max-width:420px; height:100dvh; background:var(--bg); color:var(--text); overflow:hidden; position:relative; display:flex; flex-direction:column; transition: all 0.3s ease; }
+
+        .header { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:rgba(0,0,0,0.2); backdrop-filter:blur(15px); z-index:100; flex-shrink:0; border-bottom:1px solid var(--border); }
+        .logo { font-size:20px; font-weight:800; color:var(--primary); }
+        .icon-btn { background:var(--card); border:1px solid var(--border); padding:9px 11px; border-radius:10px; cursor:pointer; color:var(--text); font-size:14px; transition:all 0.2s; }
+        .icon-btn:active { transform:scale(0.95); background:var(--primary); color:white; }
+        .lang-btn { background:var(--primary); border:none; padding:8px 14px; border-radius:10px; font-weight:700; cursor:pointer; color:white; font-size:12px; transition:all 0.2s; }
+        .spinner { animation:spin 0.6s linear infinite; margin-right:6px; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+
         .page { flex:1; overflow-y:auto; display:none; padding-bottom:120px; }
-        .page.active { display:block; }
-        .search-box { padding:15px; }
-        .search-box input { width:100%; padding:14px; border:none; border-radius:14px; background:var(--card); color:var(--text); outline:none; font-size:15px; }
-        .card { background:var(--card); margin:10px 15px; padding:18px; border-radius:18px; border:1px solid var(--border); position:relative; }
-        .card h3 { color:var(--primary); margin-bottom:8px; font-size:16px; }
-        .card p { color:var(--muted); font-size:14px; margin-bottom:4px; }
-        .price { color:#22c55e; font-weight:bold; font-size:18px; margin-top:8px; }
-        .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:bold; margin-bottom:8px; }
-        .badge-load { background:rgba(255,152,0,0.15); color:var(--primary); }
-        .badge-truck { background:rgba(34,197,94,0.15); color:#22c55e; }
-        .badge-admin { background:rgba(239,68,68,0.15); color:#ef4444; }
-        .card-img { width:100%; border-radius:12px; margin-bottom:12px; max-height:160px; object-fit:cover; display:block; background:#333; }
-        .card-actions { display:flex; gap:8px; margin-top:12px; }
-        .btn-call { flex:1; padding:10px; border:none; border-radius:10px; background:var(--primary); color:white; font-weight:bold; cursor:pointer; font-size:14px; }
-        .btn-del { padding:10px 14px; border:none; border-radius:10px; background:rgba(239,68,68,0.15); color:#ef4444; cursor:pointer; font-size:14px; }
-        .btn-edit { padding:10px 14px; border:none; border-radius:10px; background:rgba(34,197,94,0.15); color:#22c55e; cursor:pointer; font-size:14px; }
-        .form-box { padding:20px; }
-        .form-box h2 { color:var(--primary); margin-bottom:18px; font-size:18px; }
-        .field { margin-bottom:15px; }
-        .field label { display:block; margin-bottom:8px; color:var(--muted); font-size:14px; }
-        .field input, .field select, .field textarea { width:100%; padding:14px; border:none; border-radius:12px; background:var(--card); color:var(--text); outline:none; border:1px solid var(--border); font-size:15px; }
-        .field textarea { height:80px; resize:none; }
-        .field select option { background:var(--card); }
-        .btn { width:100%; padding:15px; border:none; border-radius:14px; background:var(--primary); font-size:16px; font-weight:bold; cursor:pointer; color:white; margin-top:5px; }
-        .btn-secondary { background:transparent; border:1px solid var(--primary); color:var(--primary); margin-top:5px; }
-        .btn-danger { background:#ef4444; }
-        .btn:disabled { opacity:0.6; cursor:not-allowed; }
-        .bottom-nav { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:90%; max-width:380px; height:70px; background:var(--card); display:flex; justify-content:space-around; align-items:center; border-radius:20px; border:1px solid var(--border); z-index:1000; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
-        .nav-btn { background:none; border:none; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; font-size:12px; padding:8px 12px; }
+        .page.active { display:block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+
+        .filters-bar { padding:8px 15px; display:flex; gap:6px; overflow-x:auto; flex-wrap:wrap; align-items:center; }
+        .filter-chip { padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:var(--card); color:var(--muted); font-size:11px; cursor:pointer; white-space:nowrap; transition:all 0.2s; }
+        .filter-chip.active { background:var(--primary); color:white; border-color:var(--primary); }
+        .sort-select { padding:6px 10px; border-radius:20px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:11px; }
+
+        .stars { color:var(--star); font-size:14px; }
+        .rating-badge { display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:600; }
+        .verified-badge { color:#3b82f6; font-size:14px; }
+        .expiry-tag { font-size:10px; padding:2px 8px; border-radius:10px; background:rgba(239,68,68,0.15); color:var(--danger); display:inline-block; margin-left:4px; }
+        .expiry-tag.soon { background:rgba(245,158,11,0.15); color:var(--warning); }
+
+        .search-box { padding:10px 15px; display:flex; gap:8px; align-items:center; position:sticky; top:0; background:var(--bg); z-index:10; }
+        .search-box input { flex:1; padding:12px 16px; border:2px solid var(--border); border-radius:14px; background:var(--card); color:var(--text); outline:none; font-size:14px; transition:border 0.2s; }
+        .search-box input:focus { border-color:var(--primary); }
+        .view-toggle { display:flex; gap:4px; background:var(--card); padding:4px; border-radius:12px; border:1px solid var(--border); }
+        .view-btn { padding:8px 12px; border:none; border-radius:10px; background:transparent; color:var(--muted); cursor:pointer; font-size:14px; transition:all 0.2s; }
+        .view-btn.active { background:var(--primary); color:white; }
+
+        .card { background:var(--card); margin:8px 15px; padding:16px; border-radius:16px; border:1px solid var(--border); cursor:pointer; transition:all 0.3s; position:relative; }
+        .card:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(0,0,0,0.2); }
+        .card h3 { color:var(--primary); margin-bottom:6px; font-size:16px; font-weight:600; }
+        .card p { color:var(--muted); font-size:13px; margin-bottom:3px; }
+        .price { color:var(--success); font-weight:700; font-size:18px; margin-top:6px; }
+        .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; }
+        .badge-load { background:rgba(255,152,0,0.15); color:var(--primary); border:1px solid rgba(255,152,0,0.3); }
+        .badge-truck { background:rgba(34,197,94,0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); }
+        .badge-cat { background:rgba(59,130,246,0.15); color:var(--info); margin-left:4px; }
+        .card-img { width:100%; border-radius:10px; margin-bottom:10px; max-height:160px; object-fit:cover; display:block; background:#333; }
+        .card-actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+        .btn-call { flex:1; min-width:70px; padding:9px 14px; border:none; border-radius:10px; background:var(--primary); color:white; font-weight:600; cursor:pointer; font-size:13px; transition:all 0.2s; }
+        .btn-call:active { transform:scale(0.95); }
+        .btn-chat { padding:9px 14px; border:none; border-radius:10px; background:rgba(34,197,94,0.15); color:var(--success); cursor:pointer; font-size:13px; font-weight:600; transition:all 0.2s; }
+        .btn-del { padding:9px 12px; border:none; border-radius:10px; background:rgba(239,68,68,0.15); color:var(--danger); cursor:pointer; font-size:13px; transition:all 0.2s; }
+        .btn-edit { padding:9px 12px; border:none; border-radius:10px; background:rgba(34,197,94,0.15); color:var(--success); cursor:pointer; font-size:13px; transition:all 0.2s; }
+        .btn-book { padding:9px 14px; border:none; border-radius:10px; background:rgba(59,130,246,0.15); color:var(--info); cursor:pointer; font-size:13px; font-weight:600; transition:all 0.2s; }
+        .btn-share { padding:9px 12px; border:none; border-radius:10px; background:rgba(168,85,247,0.15); color:#a855f7; cursor:pointer; font-size:13px; transition:all 0.2s; }
+        .btn-fav { padding:9px 12px; border:none; border-radius:10px; background:rgba(245,158,11,0.15); color:var(--warning); cursor:pointer; font-size:13px; transition:all 0.2s; }
+        .btn-fav.active { background:var(--warning); color:white; }
+        .post-owner { font-size:10px; color:var(--muted); margin-top:4px; padding-top:6px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+
+        .posts-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:0 15px; }
+        .grid-card { background:var(--card); border-radius:14px; border:1px solid var(--border); overflow:hidden; cursor:pointer; transition:all 0.3s; position:relative; }
+        .grid-card:hover { transform:translateY(-3px); box-shadow:0 8px 25px rgba(0,0,0,0.2); }
+        .grid-card-image { width:100%; height:120px; object-fit:cover; background:#333; }
+        .grid-card-image-placeholder { width:100%; height:120px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, rgba(255,152,0,0.15), rgba(255,152,0,0.05)); font-size:36px; }
+        .grid-card-body { padding:10px; }
+        .grid-card-badge { position:absolute; top:6px; right:6px; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:700; z-index:2; }
+        .grid-badge-load { background:rgba(255,152,0,0.9); color:white; }
+        .grid-badge-truck { background:rgba(34,197,94,0.9); color:white; }
+        .grid-card-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.3; }
+        .grid-card-route { font-size:11px; color:var(--muted); margin-bottom:6px; display:flex; align-items:center; gap:3px; }
+        .grid-card-price { font-size:15px; font-weight:700; color:var(--success); margin-bottom:6px; }
+        .grid-card-footer { display:flex; justify-content:space-between; align-items:center; padding-top:6px; border-top:1px solid var(--border); }
+        .grid-card-owner { font-size:10px; color:var(--muted); max-width:55%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .grid-card-actions { display:flex; gap:3px; }
+        .grid-action-btn { width:26px; height:26px; border:none; border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:11px; transition:all 0.2s; }
+        .grid-action-btn:active { transform:scale(0.9); }
+        .grid-btn-call { background:var(--primary); color:white; }
+        .grid-btn-chat { background:rgba(34,197,94,0.2); color:var(--success); }
+
+        .commission-info { font-size:11px; color:var(--warning); margin-top:6px; padding:6px 10px; background:rgba(245,158,11,0.1); border-radius:8px; display:flex; justify-content:space-between; align-items:center; border:1px solid rgba(245,158,11,0.2); }
+
+        .bottom-nav { position:fixed; bottom:15px; left:50%; transform:translateX(-50%); width:92%; max-width:380px; height:65px; background:var(--card); display:flex; justify-content:space-around; align-items:center; border-radius:18px; border:1px solid var(--border); z-index:1000; box-shadow:0 4px 20px rgba(0,0,0,0.3); }
+        .nav-btn { background:none; border:none; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; font-size:10px; padding:6px 10px; transition:all 0.2s; position:relative; }
         .nav-btn.active { color:var(--primary); }
-        .nav-btn i { font-size:20px; }
-        .drawer { position:fixed; top:0; left:-270px; width:260px; height:100%; background:var(--card); padding:20px; transition:0.2s; z-index:2000; border-right:1px solid var(--border); }
+        .nav-btn i { font-size:18px; transition:all 0.2s; }
+        .nav-btn.active i { transform:scale(1.15); }
+        .nav-btn::before { content:''; position:absolute; top:-6px; left:50%; transform:translateX(-50%); width:16px; height:3px; background:var(--primary); border-radius:0 0 8px 8px; opacity:0; transition:all 0.2s; }
+        .nav-btn.active::before { opacity:1; }
+
+        .drawer { position:fixed; top:0; left:-270px; width:260px; height:100%; background:var(--card); padding:20px; transition:all 0.25s ease; z-index:2000; border-right:1px solid var(--border); box-shadow:4px 0 20px rgba(0,0,0,0.3); overflow-y:auto; }
         .drawer.active { left:0; }
-        .drawer-item { padding:15px; border-radius:12px; margin-bottom:10px; cursor:pointer; background:rgba(255,255,255,0.04); color:var(--text); font-size:15px; display:flex; align-items:center; gap:10px; }
-        .drawer-item:hover { background:rgba(255,152,0,0.1); color:var(--primary); }
+        .drawer-item { padding:14px; border-radius:10px; margin-bottom:8px; cursor:pointer; background:rgba(255,255,255,0.03); color:var(--text); font-size:14px; display:flex; align-items:center; gap:10px; transition:all 0.2s; }
+        .drawer-item:hover { background:var(--primary); color:white; transform:translateX(4px); }
         .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; z-index:1500; }
         .overlay.active { display:block; }
+
         .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; padding:20px; z-index:3000; }
         .modal.active { display:flex; }
-        .modal-content { width:100%; max-width:350px; background:var(--card); padding:25px; border-radius:20px; border:1px solid var(--border); }
-        .modal-content h3 { color:var(--primary); margin-bottom:15px; }
-        .toggle-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
-        .toggle-row label { color:var(--text); font-size:15px; }
-        .switch { position:relative; display:inline-block; width:48px; height:26px; }
-        .switch input { opacity:0; width:0; height:0; }
-        .slider { position:absolute; cursor:pointer; inset:0; background:#475569; border-radius:26px; transition:0.3s; }
-        .slider::before { content:""; position:absolute; height:20px; width:20px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.3s; }
-        input:checked + .slider { background:var(--primary); }
-        input:checked + .slider::before { transform:translateX(22px); }
+        .modal-content { width:100%; max-width:340px; background:var(--card); padding:22px; border-radius:18px; border:1px solid var(--border); animation:modalIn 0.3s ease; max-height:80vh; overflow-y:auto; }
+        @keyframes modalIn { from { opacity:0; transform:translateY(15px) scale(0.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+        .modal-content h3 { color:var(--primary); margin-bottom:12px; font-size:18px; }
+
+        .btn { width:100%; padding:14px; border:none; border-radius:14px; background:var(--primary); font-size:15px; font-weight:700; cursor:pointer; color:white; margin-top:5px; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:8px; }
+        .btn:active { transform:scale(0.98); }
+        .btn:disabled { opacity:0.6; cursor:not-allowed; }
+        .btn-secondary { background:transparent; border:2px solid var(--primary); color:var(--primary); }
+        .btn-success { background:var(--success); }
+        .btn-warning { background:var(--warning); }
+        .btn-danger { background:var(--danger); }
+        .btn-info { background:var(--info); }
+        .btn-sm { width:auto; padding:8px 14px; font-size:12px; border-radius:8px; }
+        .btn-outline { background:transparent; border:1px solid var(--border); color:var(--muted); padding:8px 14px; border-radius:10px; cursor:pointer; font-size:12px; transition:all 0.2s; }
+        .btn-outline:hover { border-color:var(--primary); color:var(--primary); }
+
+        .add-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+        .add-header h2 { color:var(--primary); font-size:20px; margin:0; }
+        .post-top-btn { padding:10px 20px; border:none; border-radius:12px; background:var(--primary); color:white; font-weight:700; cursor:pointer; font-size:14px; transition:all 0.2s; display:flex; align-items:center; gap:6px; }
+        .post-top-btn:active { transform:scale(0.95); }
+        .post-top-btn:disabled { opacity:0.6; cursor:not-allowed; }
+
+        .form-box { padding:20px; }
+        .field { margin-bottom:14px; }
+        .field label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; font-weight:600; }
+        .field input, .field select, .field textarea { width:100%; padding:13px; border:2px solid var(--border); border-radius:12px; background:var(--card); color:var(--text); outline:none; font-size:14px; transition:border 0.2s; }
+        .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--primary); }
+        .field textarea { height:80px; resize:none; }
+
+        .stats-row { display:flex; gap:8px; margin:15px; }
+        .stat-card { flex:1; background:var(--card); padding:14px; border-radius:14px; border:1px solid var(--border); text-align:center; transition:all 0.2s; }
+        .stat-card:hover { transform:translateY(-2px); }
+        .stat-card .num { font-size:22px; font-weight:800; color:var(--primary); }
+        .stat-card .lbl { font-size:11px; color:var(--muted); margin-top:3px; }
+
         .loading { text-align:center; padding:40px 20px; color:var(--muted); }
-        .loading i { font-size:32px; color:var(--primary); margin-bottom:10px; animation:spin 1s linear infinite; display:block; }
-        @keyframes spin { to { transform:rotate(360deg); } }
-        .empty-state { text-align:center; padding:60px 20px; }
-        .empty-state i { font-size:48px; color:var(--muted); margin-bottom:15px; display:block; opacity:0.4; }
-        .empty-state p { color:var(--muted); font-size:15px; }
-        .toast { position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:#1e293b; color:white; padding:12px 24px; border-radius:12px; border:1px solid var(--border); z-index:9999; font-size:14px; opacity:0; transition:opacity 0.2s; pointer-events:none; white-space:nowrap; }
-        .toast.show { opacity:1; }
-        .profile-card { background:var(--card); margin:15px; padding:25px; border-radius:18px; border:1px solid var(--border); text-align:center; position:relative; }
-        .profile-avatar { width:80px; height:80px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; font-size:32px; color:white; margin:0 auto 15px; position:relative; cursor:pointer; overflow:hidden; }
+        .loading i { font-size:28px; color:var(--primary); margin-bottom:8px; animation:spin 1s linear infinite; display:block; }
+        .empty-state { text-align:center; padding:50px 20px; }
+        .empty-state i { font-size:44px; color:var(--muted); margin-bottom:12px; display:block; opacity:0.4; animation:float 3s ease-in-out infinite; }
+        @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
+        .empty-state p { color:var(--muted); font-size:14px; }
+
+        .toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--card); color:white; padding:10px 20px; border-radius:12px; border:1px solid var(--border); z-index:9999; font-size:13px; opacity:0; transition:all 0.3s; pointer-events:none; white-space:nowrap; }
+        .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+        .theme-selector { display:flex; gap:8px; margin-top:8px; justify-content:center; }
+        .theme-dot { width:28px; height:28px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:all 0.2s; }
+        .theme-dot:hover { transform:scale(1.2); }
+        .theme-dot.active { border-color:var(--text); box-shadow:0 0 0 3px rgba(255,255,255,0.15); }
+        .theme-dot.default { background:#ff9800; } .theme-dot.ocean { background:#06b6d4; } .theme-dot.forest { background:#10b981; } .theme-dot.purple { background:#a855f7; } .theme-dot.sunset { background:#ef4444; }
+
+        .toggle-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+        .switch { position:relative; display:inline-block; width:44px; height:24px; }
+        .switch input { opacity:0; width:0; height:0; }
+        .slider { position:absolute; cursor:pointer; inset:0; background:#475569; border-radius:24px; transition:0.3s; }
+        .slider::before { content:""; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.3s; }
+        input:checked+.slider { background:var(--primary); }
+        input:checked+.slider::before { transform:translateX(20px); }
+
+        .profile-card { background:var(--card); margin:15px; padding:22px; border-radius:16px; border:1px solid var(--border); text-align:center; }
+        .profile-avatar { width:75px; height:75px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; font-size:30px; color:white; margin:0 auto 12px; cursor:pointer; overflow:hidden; transition:all 0.2s; position:relative; }
+        .profile-avatar:hover { transform:scale(1.05); }
         .profile-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
         .profile-avatar .avatar-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.3s; border-radius:50%; }
         .profile-avatar:hover .avatar-overlay { opacity:1; }
-        .profile-card h2 { font-size:20px; margin-bottom:5px; display:flex; align-items:center; justify-content:center; gap:8px; }
-        .profile-card p { color:var(--muted); font-size:14px; }
-        .edit-icon { font-size:14px; color:var(--primary); cursor:pointer; }
-        .stats-row { display:flex; gap:10px; margin:15px; }
-        .stat-card { flex:1; background:var(--card); padding:15px; border-radius:14px; border:1px solid var(--border); text-align:center; }
-        .stat-card .num { font-size:22px; font-weight:bold; color:var(--primary); }
-        .stat-card .lbl { font-size:12px; color:var(--muted); margin-top:4px; }
+        .profile-card h2 { font-size:18px; margin-bottom:4px; }
+        .profile-card p { color:var(--muted); font-size:13px; }
+        .edit-icon { font-size:13px; color:var(--primary); cursor:pointer; margin-left:6px; }
+
+        .image-preview { width:100%; border-radius:10px; max-height:150px; object-fit:cover; display:none; margin-top:8px; background:#333; }
         .auth-container { padding:40px 20px; text-align:center; }
-        .auth-container input { width:100%; padding:14px; margin-bottom:15px; border:none; border-radius:12px; background:var(--card); color:var(--text); font-size:16px; border:1px solid var(--border); }
-        .image-preview { width:100%; border-radius:12px; max-height:160px; object-fit:cover; display:none; margin-top:10px; background:#333; }
-        .post-owner { font-size:11px; color:var(--muted); margin-top:5px; padding-top:5px; border-top:1px solid var(--border); }
-        .auth-tabs { display:flex; gap:10px; margin-bottom:20px; }
-        .auth-tab { flex:1; padding:10px; background:var(--card); border:1px solid var(--border); border-radius:10px; cursor:pointer; }
-        .auth-tab.active { background:var(--primary); color:white; }
-        #map { height: 350px; width: 100%; border-radius: 16px; margin-top: 15px; }
-        .chat-container { height: 450px; display: flex; flex-direction: column; }
-        .chat-messages { flex:1; overflow-y:auto; padding:15px; }
-        .chat-message { margin-bottom:15px; display:flex; flex-direction:column; }
+        .auth-container input { width:100%; padding:13px; margin-bottom:12px; border:2px solid var(--border); border-radius:12px; background:var(--card); color:var(--text); font-size:15px; outline:none; transition:border 0.2s; }
+        .auth-container input:focus { border-color:var(--primary); }
+        .auth-tabs { display:flex; gap:8px; margin-bottom:18px; }
+        .auth-tab { flex:1; padding:11px; background:var(--card); border:1px solid var(--border); border-radius:10px; cursor:pointer; font-weight:600; font-size:14px; transition:all 0.2s; }
+        .auth-tab.active { background:var(--primary); color:white; border-color:var(--primary); }
+        .reset-link { color:var(--primary); cursor:pointer; font-size:12px; margin-top:10px; display:inline-block; text-decoration:underline; }
+
+        #map { height:350px; width:100%; border-radius:14px; margin-top:12px; }
+        .chat-container { height:420px; display:flex; flex-direction:column; }
+        .chat-messages { flex:1; overflow-y:auto; padding:12px; }
+        .chat-message { margin-bottom:12px; display:flex; flex-direction:column; }
         .chat-message.sent { align-items:flex-end; }
         .chat-message.received { align-items:flex-start; }
-        .chat-bubble { max-width:80%; padding:10px 15px; border-radius:18px; margin-bottom:4px; }
+        .chat-bubble { max-width:80%; padding:9px 14px; border-radius:16px; font-size:13px; }
         .chat-message.sent .chat-bubble { background:var(--primary); color:white; border-bottom-right-radius:4px; }
         .chat-message.received .chat-bubble { background:var(--card); border-bottom-left-radius:4px; }
-        .chat-time { font-size:10px; color:var(--muted); margin:0 10px; }
-        .chat-input { display:flex; gap:10px; padding:15px; background:var(--card); border-top:1px solid var(--border); }
-        .chat-input input { flex:1; padding:12px; border:none; border-radius:20px; background:var(--bg); color:var(--text); outline:none; }
-        .chat-input button { padding:12px 20px; border:none; border-radius:20px; background:var(--primary); color:white; cursor:pointer; }
-        .users-list { max-height: 400px; overflow-y: auto; }
-        .user-item { padding:15px; border-bottom:1px solid var(--border); cursor:pointer; display:flex; align-items:center; gap:10px; }
-        .user-item:hover { background:rgba(255,152,0,0.1); }
-        .user-avatar { width:40px; height:40px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; }
+        .chat-time { font-size:9px; color:var(--muted); margin:2px 8px; }
+        .chat-input { display:flex; gap:8px; padding:12px; background:var(--card); border-top:1px solid var(--border); }
+        .chat-input input { flex:1; padding:10px; border:none; border-radius:18px; background:var(--bg); color:var(--text); outline:none; font-size:13px; }
+        .users-list { max-height:380px; overflow-y:auto; }
+        .user-item { padding:12px; border-bottom:1px solid var(--border); cursor:pointer; display:flex; align-items:center; gap:10px; transition:all 0.2s; }
+        .user-item:hover { background:rgba(255,152,0,0.08); }
+        .user-avatar { width:38px; height:38px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; color:white; font-size:16px; }
         .user-info { flex:1; }
-        .user-name { font-weight:bold; }
+        .user-name { font-weight:600; font-size:14px; }
         .user-email { font-size:11px; color:var(--muted); }
-        .location-btn { background:var(--primary); border:none; padding:8px 12px; border-radius:10px; color:white; margin-top:10px; cursor:pointer; }
-        .admin-panel { background:rgba(239,68,68,0.1); border:1px solid var(--admin); }
-        .admin-header { background:var(--admin); color:white; padding:10px; border-radius:10px; margin-bottom:15px; text-align:center; }
-        .footer { text-align: center; padding: 15px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 10px; }
-        .logout-btn { background: #ef4444; color: white; margin: 20px 15px; width: calc(100% - 30px); }
-        .profile-actions { padding: 0 15px; }
-        .profile-action-btn { width:100%; padding:15px; border:none; border-radius:14px; font-size:16px; font-weight:bold; cursor:pointer; margin-top:10px; display:flex; align-items:center; justify-content:center; gap:10px; background:var(--card); color:var(--text); border:1px solid var(--border); transition:all 0.3s; }
-        .profile-action-btn:hover { background:var(--primary); color:white; }
-        .profile-action-btn.danger-btn { background:transparent; color:var(--admin); border-color:var(--admin); }
-        .profile-action-btn.danger-btn:hover { background:var(--admin); color:white; }
+
+        .commission-panel { padding:18px; }
+        .commission-stats { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:16px; }
+        .commission-stat-card { background:var(--card); padding:14px; border-radius:12px; border:1px solid var(--border); text-align:center; }
+        .commission-stat-card .num { font-size:20px; font-weight:800; }
+        .commission-stat-card .lbl { font-size:11px; color:var(--muted); margin-top:3px; }
+        .commission-stat-card.total .num { color:var(--primary); }
+        .commission-stat-card.pending .num { color:var(--warning); }
+        .commission-stat-card.collected .num { color:var(--success); }
+        .commission-stat-card.rate .num { color:var(--info); }
+
+        .analytics-card { background:var(--card); padding:15px; border-radius:12px; margin-bottom:12px; border:1px solid var(--border); }
+        .analytics-card h4 { color:var(--primary); margin-bottom:8px; font-size:14px; }
+        .chart-bar { display:flex; align-items:flex-end; gap:4px; height:100px; padding:10px 0; }
+        .chart-bar-item { flex:1; background:var(--primary); border-radius:4px 4px 0 0; min-height:4px; transition:all 0.3s; }
+
+        .install-banner { background:var(--primary); color:white; padding:10px 15px; text-align:center; font-size:13px; cursor:pointer; display:none; }
+        .install-banner.show { display:block; }
+        .footer { text-align:center; padding:12px; font-size:10px; color:var(--muted); border-top:1px solid var(--border); margin-top:8px; }
+        .notification-badge { position:relative; }
+        .notification-count { position:absolute; top:-6px; right:-6px; background:var(--danger); color:white; border-radius:50%; width:18px; height:18px; font-size:10px; display:flex; align-items:center; justify-content:center; font-weight:bold; }
+        .notification-panel { max-height:400px; overflow-y:auto; }
+        .notification-item { padding:12px; border-bottom:1px solid var(--border); cursor:pointer; display:flex; gap:10px; align-items:start; }
+        .notification-item:hover { background:rgba(255,255,255,0.03); }
+        .notification-item.unread { background:rgba(255,152,0,0.05); border-left:3px solid var(--primary); }
+        .notification-icon { width:35px; height:35px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+        .forum-post { background:var(--card); margin:8px 15px; padding:15px; border-radius:12px; border:1px solid var(--border); }
     </style>
 </head>
 <body>
 <div class="app" id="app">
     <div class="toast" id="toast"></div>
     <div class="overlay" id="overlay" onclick="toggleDrawer()"></div>
+    <div class="install-banner" id="installBanner" onclick="installApp()">📱 Install App - Add to Home Screen</div>
 
     <div class="drawer" id="drawer">
-        <h2 id="menuTitle" style="margin-bottom:20px; color:var(--primary);">Menu</h2>
-        <div class="drawer-item" id="adminMenuItem" style="display:none;" onclick="openAdminPanel()"><i class="fa-solid fa-crown"></i><span>Admin Panel</span></div>
-        <div class="drawer-item" onclick="openSettings()"><i class="fa-solid fa-gear"></i><span id="drawerSettings">Settings</span></div>
+        <h3 style="color:var(--primary); margin-bottom:18px;" id="drawerTitle">Menu</h3>
+        <div class="drawer-item" onclick="openProfile()"><i class="fa-solid fa-user"></i><span id="drawerProfile">Profile</span></div>
+        <div class="drawer-item" onclick="openNotifications()"><i class="fa-solid fa-bell"></i><span id="drawerNotifications">Notifications</span><span class="notification-count" id="drawerNotifCount" style="display:none;">0</span></div>
+        <div class="drawer-item" onclick="openBookings()"><i class="fa-solid fa-calendar-check"></i><span id="drawerBookings">My Bookings</span></div>
+        <div class="drawer-item" onclick="openFavorites()"><i class="fa-solid fa-bookmark"></i><span id="drawerFavorites">Favorites</span></div>
+        <div class="drawer-item" onclick="openForum()"><i class="fa-solid fa-comments"></i><span id="drawerForum">Community Forum</span></div>
+        <div class="drawer-item" id="adminMenuItem" style="display:none;" onclick="openAdminPanel()"><i class="fa-solid fa-crown"></i><span id="drawerAdmin">Admin Panel</span></div>
+        <div class="drawer-item" id="commissionMenuItem" style="display:none;" onclick="openCommissionPanel()"><i class="fa-solid fa-percent"></i><span id="drawerCommission">Commission Panel</span></div>
+        <div class="drawer-item" id="analyticsMenuItem" style="display:none;" onclick="openAnalyticsPage()"><i class="fa-solid fa-chart-line"></i><span id="drawerAnalytics">Analytics</span></div>
+        <div class="drawer-item" onclick="openSettings()"><i class="fa-solid fa-palette"></i><span id="drawerSettings">Settings</span></div>
         <div class="drawer-item" onclick="openAbout()"><i class="fa-solid fa-circle-info"></i><span id="drawerAbout">About</span></div>
         <div class="drawer-item" onclick="openContact()"><i class="fa-solid fa-phone"></i><span id="drawerContact">Contact</span></div>
     </div>
 
     <div class="header">
         <button class="icon-btn" onclick="toggleDrawer()"><i class="fa-solid fa-bars"></i></button>
-        <div class="logo">Ethio <span>Hub</span></div>
-        <button class="lang-btn" onclick="changeLang()" id="langBtn">EN</button>
+        <div class="logo">⚡ Ethio Hub Pro</div>
+        <div style="display:flex; gap:6px;">
+            <button class="icon-btn notification-badge" onclick="openNotifications()">
+                <i class="fa-solid fa-bell"></i>
+                <span class="notification-count" id="headerNotifCount" style="display:none;">0</span>
+            </button>
+            <button class="lang-btn" onclick="changeLang()" id="langBtn">EN</button>
+        </div>
     </div>
 
-    <!-- Auth Page -->
     <div class="page active" id="authPage">
         <div class="auth-container">
-            <h2 style="color:var(--primary); margin-bottom:20px;">Ethio Delivery Hub</h2>
+            <h2 style="color:var(--primary); margin-bottom:8px; font-size:26px;">Ethio Delivery Hub</h2>
+            <p style="color:var(--muted); margin-bottom:25px; font-size:13px;" id="authSubtitle">Connecting cargo owners with truck drivers</p>
             <div class="auth-tabs">
                 <div class="auth-tab active" onclick="switchAuthTab('login')" id="loginTab">Login</div>
                 <div class="auth-tab" onclick="switchAuthTab('signup')" id="signupTab">Sign Up</div>
             </div>
-            
-            <!-- Login Form -->
             <div id="loginForm">
                 <input type="email" id="loginEmail" placeholder="Email">
                 <input type="password" id="loginPassword" placeholder="Password">
-                <button class="btn" onclick="loginWithEmail()">Login</button>
+                <button class="btn" onclick="loginWithEmail()" id="loginBtn">Login</button>
+                <span class="reset-link" onclick="resetPassword()" id="forgotPassword">Forgot Password?</span>
             </div>
-            
-            <!-- Signup Form -->
             <div id="signupForm" style="display:none;">
                 <input type="text" id="signupName" placeholder="Full Name">
                 <input type="email" id="signupEmail" placeholder="Email">
                 <input type="tel" id="signupPhone" placeholder="Phone Number">
                 <input type="password" id="signupPassword" placeholder="Password (min 6 chars)">
-                <button class="btn" onclick="signupWithEmail()">Create Account</button>
+                <button class="btn" onclick="signupWithEmail()" id="signupBtn">Create Account</button>
             </div>
         </div>
     </div>
 
-    <!-- Main App Pages -->
     <div id="mainApp" style="display:none; flex-direction:column; flex:1;">
         <div class="page" id="homePage">
             <div class="search-box">
                 <input type="search" id="searchInput" placeholder="Search..." onkeyup="searchPosts()">
+                <div class="view-toggle">
+                    <button class="view-btn active" onclick="switchView('list')" id="listViewBtn"><i class="fa-solid fa-list"></i></button>
+                    <button class="view-btn" onclick="switchView('grid')" id="gridViewBtn"><i class="fa-solid fa-grid-2"></i></button>
+                </div>
+            </div>
+            <div class="filters-bar" id="filtersBar">
+                <button class="filter-chip active" onclick="setFilter('all',this)">All</button>
+                <button class="filter-chip" onclick="setFilter('load',this)">📦 Cargo</button>
+                <button class="filter-chip" onclick="setFilter('truck',this)">🚛 Trucks</button>
+                <select class="sort-select" onchange="sortPosts(this.value)" id="sortSelect">
+                    <option value="newest">Newest</option><option value="oldest">Oldest</option>
+                    <option value="price-high">Price: High-Low</option><option value="price-low">Price: Low-High</option>
+                    <option value="rating">Top Rated</option><option value="expiring">Expiring Soon</option>
+                </select>
             </div>
             <div id="postsContainer"><div class="loading"><i class="fa-solid fa-spinner"></i> Loading...</div></div>
         </div>
-
         <div class="page" id="addPage">
             <div class="form-box">
-                <h2 id="addPageTitle">New Post</h2>
-                <button class="btn" id="btnPostTop" onclick="submitPost()" style="margin-bottom:20px;">Post</button>
-                <div class="field"><label id="lblUserType">User Type</label>
-                    <select id="role"><option value="load" id="optLoad">Has Cargo</option><option value="truck" id="optTruck">Has Truck</option></select></div>
-                <div class="field"><label id="lblTitle">Name</label><input type="text" id="title" placeholder="e.g., Coffee beans, Truck for rent"></div>
-                <div class="field"><label id="lblRoute">Route</label><input type="text" id="route" placeholder="e.g., Addis - Dire Dawa"></div>
-                <div class="field"><label id="lblPhone">Phone</label><input type="tel" id="phone" placeholder="09XXXXXXXX"></div>
-                <div class="field"><label id="lblPrice">Price (Birr)</label><input type="number" id="price" min="0" placeholder="0"></div>
-                <div class="field"><label id="lblImg">Item Image (optional)</label><input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)"><img id="imgPreview" class="image-preview" alt="preview"></div>
-                <div class="field"><label id="lblNote">Note (optional)</label><textarea id="note" placeholder="Additional details..."></textarea></div>
-                <button class="btn" id="btnPostBottom" onclick="submitPost()">Post</button>
+                <div class="add-header"><h2 id="addTitle">➕ New Post</h2><button class="post-top-btn" onclick="submitPost()"><i class="fa-solid fa-paper-plane"></i> <span id="postBtnText">Post</span></button></div>
+                <div class="field"><label>User Type</label><select id="role"><option value="load">📦 Has Cargo</option><option value="truck">🚛 Has Truck</option></select></div>
+                <div class="field"><label>Category</label><select id="category"><option value="agriculture">🌾 Agriculture</option><option value="construction">🏗️ Construction</option><option value="food">🍽️ Food</option><option value="electronics">📱 Electronics</option><option value="furniture">🪑 Furniture</option><option value="other">📦 Other</option></select></div>
+                <div class="field"><label>Name</label><input type="text" id="title" placeholder="Coffee beans, Truck for rent"></div>
+                <div class="field"><label>Route</label><input type="text" id="route" placeholder="Addis - Dire Dawa"></div>
+                <div class="field"><label>Phone</label><input type="tel" id="phone" placeholder="09XXXXXXXX"></div>
+                <div class="field"><label>Price (Birr)</label><input type="number" id="price" min="0" placeholder="0" oninput="calculateCommissionPreview()"></div>
+                <div class="field"><label>Expires In (Days)</label><select id="expiryDays"><option value="7">7 Days</option><option value="14" selected>14 Days</option><option value="30">30 Days</option><option value="60">60 Days</option></select></div>
+                <div class="commission-info" id="commissionPreview" style="display:none;"><span>🏦 Commission (<span id="commissionRateDisplay">0</span>%):</span><span id="commissionAmountDisplay">0 Birr</span></div>
+                <div class="field"><label>Item Image (optional)</label><input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)"><img id="imgPreview" class="image-preview" alt="preview"></div>
+                <div class="field"><label>Note (optional)</label><textarea id="note" placeholder="Additional details..."></textarea></div>
             </div>
         </div>
-
-        <div class="page" id="mapPage">
-            <div style="padding:20px;">
-                <h3 style="color:var(--primary); margin-bottom:10px;">📍 Live Map</h3>
-                <button class="location-btn" onclick="getUserLocation()"><i class="fa-solid fa-location-dot"></i> Share My Location</button>
-                <div id="map"></div>
-                <p style="font-size:12px; color:var(--muted); margin-top:10px;">Tap on markers to see user locations</p>
-            </div>
-        </div>
-
-        <div class="page" id="chatPage">
-            <div style="padding:15px;">
-                <h3 style="color:var(--primary); margin-bottom:10px;">💬 Messages</h3>
-                <div id="chatUsersList" class="users-list"></div>
-                <div id="chatConversation" style="display:none;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <button class="icon-btn" onclick="backToUsers()" style="background:transparent;">← Back</button>
-                        <span id="chatWithName"></span>
-                    </div>
-                    <div class="chat-container">
-                        <div class="chat-messages" id="chatMessages"></div>
-                        <div class="chat-input">
-                            <input type="text" id="messageInput" placeholder="Type a message...">
-                            <button onclick="sendMessage()">Send</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+        <div class="page" id="bookingsPage"><div style="padding:18px;"><h2 style="color:var(--primary);">📅 My Bookings</h2><div id="bookingsContainer"></div></div></div>
+        <div class="page" id="favoritesPage"><div style="padding:18px;"><h2 style="color:var(--primary);">⭐ Favorites</h2><div id="favoritesContainer"></div></div></div>
+        <div class="page" id="notificationsPage"><div style="padding:18px;"><h2 style="color:var(--primary);">🔔 Notifications</h2><button class="btn btn-sm btn-secondary" onclick="markAllNotificationsRead()">Mark All Read</button><div class="notification-panel" id="notificationList"></div></div></div>
+        <div class="page" id="forumPage"><div style="padding:18px;"><h2 style="color:var(--primary);">💬 Community Forum</h2><button class="btn btn-sm" onclick="newForumPost()" style="margin:10px 0;">+ New Topic</button><div id="forumContainer"></div></div></div>
+        <div class="page" id="mapPage"><div style="padding:18px;"><h3 style="color:var(--primary);">📍 Live Map</h3><button class="btn btn-sm" onclick="getUserLocation()" style="margin-bottom:12px;"><i class="fa-solid fa-location-dot"></i> Share My Location</button><div id="map"></div></div></div>
+        <div class="page" id="chatPage"><div style="padding:12px;"><h3 style="color:var(--primary);">💬 Messages</h3><div id="chatUsersList" class="users-list"></div><div id="chatConversation" style="display:none;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><button class="icon-btn" onclick="backToUsers()">← Back</button><span id="chatWithName" style="font-weight:600;"></span></div><div class="chat-container"><div class="chat-messages" id="chatMessages"></div><div class="chat-input"><input type="text" id="messageInput" placeholder="Type a message..."><button class="btn btn-sm" onclick="sendMessage()">Send</button></div></div></div></div></div>
         <div class="page" id="profilePage">
             <div class="profile-card">
                 <div class="profile-avatar" onclick="document.getElementById('profilePhotoInput').click()">
-                    <img id="profileAvatarImg" style="display:none;" alt="Profile">
-                    <i class="fa-solid fa-user" id="profileAvatarIcon"></i>
-                    <div class="avatar-overlay">
-                        <i class="fa-solid fa-camera"></i>
-                    </div>
+                    <img id="profileAvatarImg" style="display:none;" alt="Profile"><i class="fa-solid fa-user" id="profileAvatarIcon"></i>
+                    <div class="avatar-overlay"><i class="fa-solid fa-camera"></i></div>
                 </div>
                 <input type="file" id="profilePhotoInput" accept="image/*" style="display:none;" onchange="updateProfilePhoto(event)">
-                <h2>
-                    <span id="profileName">User</span>
-                    <i class="fa-solid fa-pen-to-square edit-icon" onclick="editProfileField('name')"></i>
-                </h2>
-                <p>
-                    <span id="profileEmail"></span>
-                </p>
-                <p>
-                    📱 <span id="profilePhone">Not set</span>
-                    <i class="fa-solid fa-pen-to-square edit-icon" onclick="editProfileField('phone')" style="margin-left:5px;"></i>
-                </p>
-                <p style="font-size:12px; color:var(--muted); margin-top:8px;">
-                    🕐 Member since: <span id="profileMemberSince">-</span>
-                </p>
-                <div id="adminBadge" style="display:none; margin-top:10px;"><span class="badge badge-admin">👑 Admin</span></div>
+                <h2><span id="profileName">User</span><i class="fa-solid fa-pen-to-square edit-icon" onclick="editProfileField('name')"></i> <span id="verifiedBadge" style="display:none;" class="verified-badge">✓ Verified</span></h2>
+                <div class="rating-badge">⭐ <span id="profileRatingNum">0.0</span> (<span id="profileRatingCount">0</span>)</div>
+                <p><span id="profileEmail"></span></p>
+                <p>📱 <span id="profilePhone">Not set</span><i class="fa-solid fa-pen-to-square edit-icon" onclick="editProfileField('phone')"></i></p>
+                <p style="font-size:11px; color:var(--muted); margin-top:6px;">🕐 Member since: <span id="profileMemberSince">-</span></p>
+                <div id="adminBadge" style="display:none; margin-top:8px;"><span class="badge" style="background:rgba(239,68,68,0.15); color:#ef4444;">👑 Admin</span></div>
+                <button class="btn btn-sm btn-info" onclick="requestVerification()" id="verifyBtn" style="margin-top:8px;">📋 Request Verification</button>
             </div>
-            <div class="stats-row">
-                <div class="stat-card"><div class="num" id="statTotal">0</div><div class="lbl" id="statTotalLbl">My Posts</div></div>
-                <div class="stat-card"><div class="num" id="statLoad">0</div><div class="lbl" id="statLoadLbl">Cargo</div></div>
-                <div class="stat-card"><div class="num" id="statTruck">0</div><div class="lbl" id="statTruckLbl">Trucks</div></div>
-            </div>
-            <div class="profile-actions">
-                <button class="profile-action-btn" onclick="openSettings()">
-                    <i class="fa-solid fa-gear"></i>
-                    Settings
-                </button>
-                <button class="profile-action-btn" onclick="openAbout()">
-                    <i class="fa-solid fa-circle-info"></i>
-                    About
-                </button>
-                <button class="profile-action-btn" onclick="openContact()">
-                    <i class="fa-solid fa-phone"></i>
-                    Contact
-                </button>
-                <button class="profile-action-btn danger-btn" onclick="logout()">
-                    <i class="fa-solid fa-sign-out-alt"></i>
-                    Logout
-                </button>
+            <div class="stats-row"><div class="stat-card"><div class="num" id="statTotal">0</div><div class="lbl">My Posts</div></div><div class="stat-card"><div class="num" id="statLoad">0</div><div class="lbl">Cargo</div></div><div class="stat-card"><div class="num" id="statTruck">0</div><div class="lbl">Trucks</div></div></div>
+            <div style="padding:0 15px;">
+                <button class="btn btn-secondary" onclick="openSettings()" style="margin-top:8px;"><i class="fa-solid fa-palette"></i> Settings</button>
+                <button class="btn btn-danger" onclick="logout()" style="margin-top:8px;"><i class="fa-solid fa-sign-out-alt"></i> Logout</button>
             </div>
         </div>
-        
-        <!-- Admin Panel Page -->
-        <div class="page" id="adminPage">
-            <div style="padding:20px;">
-                <div class="admin-header">
-                    <h3><i class="fa-solid fa-crown"></i> Admin Dashboard</h3>
-                    <p>Manage all users and posts</p>
-                </div>
-                <div class="stats-row">
-                    <div class="stat-card"><div class="num" id="adminTotalUsers">0</div><div class="lbl">Total Users</div></div>
-                    <div class="stat-card"><div class="num" id="adminTotalPosts">0</div><div class="lbl">Total Posts</div></div>
-                </div>
-                <h4 style="color:var(--primary); margin:15px 0 10px;">All Posts</h4>
-                <div id="adminPostsList"></div>
-                <h4 style="color:var(--primary); margin:15px 0 10px;">All Users</h4>
-                <div id="adminUsersList"></div>
-            </div>
-        </div>
+        <div class="page" id="adminPage"><div style="padding:18px;"><div style="background:var(--danger); color:white; padding:12px; border-radius:12px; margin-bottom:14px; text-align:center;"><h3><i class="fa-solid fa-crown"></i> Admin Dashboard</h3></div><div class="stats-row"><div class="stat-card"><div class="num" id="adminTotalUsers">0</div><div class="lbl">Total Users</div></div><div class="stat-card"><div class="num" id="adminTotalPosts">0</div><div class="lbl">Total Posts</div></div></div><div id="adminContent"></div></div></div>
+        <div class="page" id="commissionPage"><div class="commission-panel"><div style="background:linear-gradient(135deg, #f59e0b, #d97706); color:white; padding:12px; border-radius:12px; margin-bottom:14px; text-align:center;"><h3><i class="fa-solid fa-percent"></i> Commission Dashboard</h3></div><div class="commission-stats"><div class="commission-stat-card total"><div class="num" id="totalCommission">0</div><div class="lbl">Total</div></div><div class="commission-stat-card pending"><div class="num" id="pendingCommission">0</div><div class="lbl">Pending</div></div><div class="commission-stat-card collected"><div class="num" id="collectedCommission">0</div><div class="lbl">Collected</div></div><div class="commission-stat-card rate"><div class="num" id="commissionRateStat">10%</div><div class="lbl">Rate</div></div></div><div id="commissionLogContainer"></div></div></div>
+        <div class="page" id="analyticsPage"><div style="padding:18px;"><div style="background:var(--info); color:white; padding:12px; border-radius:12px; margin-bottom:14px; text-align:center;"><h3><i class="fa-solid fa-chart-line"></i> Analytics Dashboard</h3></div><div class="stats-row"><div class="stat-card"><div class="num" id="analyticsTotalPosts">0</div><div class="lbl">Total Posts</div></div><div class="stat-card"><div class="num" id="analyticsTotalUsers">0</div><div class="lbl">Total Users</div></div><div class="stat-card"><div class="num" id="analyticsTotalRevenue">0</div><div class="lbl">Revenue (Birr)</div></div></div><div class="analytics-card"><h4>📊 Posts This Week</h4><div class="chart-bar" id="weeklyChart"></div></div></div></div>
     </div>
 
     <div class="bottom-nav" id="bottomNav" style="display:none;">
-        <button class="nav-btn active" onclick="showPage('homePage',this)"><i class="fa-solid fa-house"></i><span>Home</span></button>
-        <button class="nav-btn" onclick="showPage('addPage',this)"><i class="fa-solid fa-plus"></i><span>Add</span></button>
-        <button class="nav-btn" onclick="showPage('mapPage',this)"><i class="fa-solid fa-map"></i><span>Map</span></button>
-        <button class="nav-btn" onclick="showPage('chatPage',this)"><i class="fa-solid fa-message"></i><span>Chat</span></button>
-        <button class="nav-btn" onclick="showPage('profilePage',this)"><i class="fa-solid fa-user"></i><span>Profile</span></button>
+        <button class="nav-btn active" onclick="showPage('homePage',this)"><i class="fa-solid fa-house"></i><span id="navHome">Home</span></button>
+        <button class="nav-btn" onclick="showPage('addPage',this)"><i class="fa-solid fa-plus"></i><span id="navAdd">Add</span></button>
+        <button class="nav-btn" onclick="showPage('bookingsPage',this)"><i class="fa-solid fa-calendar-check"></i><span id="navBookings">Bookings</span></button>
+        <button class="nav-btn" onclick="showPage('mapPage',this)"><i class="fa-solid fa-map"></i><span id="navMap">Map</span></button>
+        <button class="nav-btn" onclick="showPage('chatPage',this)"><i class="fa-solid fa-message"></i><span id="navChat">Chat</span></button>
     </div>
-
-    <div class="footer" id="footer" style="display:none;">
-        © 2025 Ethio Delivery Hub | Developed by Desta Abebe
-    </div>
-
-    <!-- Edit Profile Modal -->
-    <div class="modal" id="editProfileModal">
-        <div class="modal-content">
-            <h3 id="editProfileTitle">Edit Profile</h3>
-            <div class="field">
-                <label id="editFieldLabel">Field</label>
-                <input type="text" id="editFieldInput" placeholder="Enter new value">
-            </div>
-            <div style="display:flex; gap:10px;">
-                <button class="btn btn-secondary" onclick="closeEditProfileModal()">Cancel</button>
-                <button class="btn" onclick="saveProfileField()">Save</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modals -->
-    <div class="modal" id="settingsModal"><div class="modal-content"><h3 id="settingsTitle">Settings</h3><div class="toggle-row"><label id="themeLbl">Light Mode</label><label class="switch"><input type="checkbox" id="themeSwitch" onchange="toggleTheme()"><span class="slider"></span></label></div><button class="btn" onclick="closeSettings()">Close</button></div></div>
-    <div class="modal" id="aboutModal"><div class="modal-content"><h3>About</h3><p>Ethio Delivery Hub v4.0<br>Connecting cargo owners with truck drivers across Ethiopia</p><br><p style="font-size:12px;">© 2024 Desta Abebe</p><br><button class="btn" onclick="closeAbout()">Close</button></div></div>
-    <div class="modal" id="contactModal"><div class="modal-content"><h3 id="contactTitle">Contact</h3><p><i class="fa-solid fa-phone"></i> 0983776626<br><i class="fa-solid fa-phone"></i> 0913099801<br><i class="fa-solid fa-envelope"></i> ethiodeliveryhub@gmail.com</p><br><button class="btn" onclick="closeContact()">Close</button></div></div>
+    <div class="footer" id="footer" style="display:none;">© 2025 Ethio Delivery Hub Pro | Developed by Desta Abebe</div>
 </div>
 
-<script type="importmap">
-    {
-        "imports": {
-            "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
-            "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
-            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js",
-            "firebase/storage": "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js"
-        }
-    }
-</script>
+<div class="modal" id="bookingModal"><div class="modal-content"><h3>📅 Book This</h3><div class="field"><label>Start Date</label><input type="date" id="bookingStartDate"></div><div class="field"><label>End Date</label><input type="date" id="bookingEndDate"></div><div class="field"><label>Notes</label><textarea id="bookingNotes"></textarea></div><button class="btn" onclick="confirmBooking()">Confirm Booking</button><button class="btn btn-secondary" onclick="closeModal('bookingModal')">Cancel</button></div></div>
+<div class="modal" id="forumPostModal"><div class="modal-content"><h3>📝 New Topic</h3><div class="field"><label>Topic</label><input type="text" id="forumTopic"></div><div class="field"><label>Category</label><select id="forumCategory"><option value="safety">Safety</option><option value="routes">Routes</option><option value="tips">Tips</option><option value="general">General</option></select></div><div class="field"><label>Message</label><textarea id="forumMessage"></textarea></div><button class="btn" onclick="submitForumPost()">Post</button><button class="btn btn-secondary" onclick="closeModal('forumPostModal')">Cancel</button></div></div>
+<div class="modal" id="shareModal"><div class="modal-content"><h3>📤 Share</h3><button class="btn btn-sm btn-success" onclick="shareToWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp</button><button class="btn btn-sm btn-info" onclick="shareToTelegram()" style="margin-top:8px;"><i class="fab fa-telegram"></i> Telegram</button><button class="btn btn-sm" onclick="copyPostLink()" style="margin-top:8px;"><i class="fa-solid fa-copy"></i> Copy Link</button><button class="btn btn-secondary" onclick="closeModal('shareModal')" style="margin-top:8px;">Close</button></div></div>
+<div class="modal" id="settingsModal"><div class="modal-content"><h3>🎨 Settings</h3><div class="toggle-row"><label>Light Mode</label><label class="switch"><input type="checkbox" id="themeSwitch" onchange="toggleTheme()"><span class="slider"></span></label></div><div style="margin-bottom:12px;"><label style="display:block; margin-bottom:6px; font-weight:600;">Color Theme</label><div class="theme-selector"><div class="theme-dot default active" onclick="setTheme('default')"></div><div class="theme-dot ocean" onclick="setTheme('ocean')"></div><div class="theme-dot forest" onclick="setTheme('forest')"></div><div class="theme-dot purple" onclick="setTheme('purple')"></div><div class="theme-dot sunset" onclick="setTheme('sunset')"></div></div></div><button class="btn" onclick="closeModal('settingsModal')">Close</button></div></div>
+<div class="modal" id="aboutModal"><div class="modal-content"><h3>About</h3><p>Ethio Delivery Hub Pro v7.0<br>Complete logistics platform for Ethiopia.</p><button class="btn" onclick="closeModal('aboutModal')">Close</button></div></div>
+<div class="modal" id="contactModal"><div class="modal-content"><h3>Contact</h3><p><i class="fa-solid fa-phone"></i> 0983776626<br><i class="fa-solid fa-envelope"></i> ethiodeliveryhub@gmail.com</p><button class="btn" onclick="closeModal('contactModal')">Close</button></div></div>
+<div class="modal" id="editProfileModal"><div class="modal-content"><h3>Edit Profile</h3><div class="field"><label>Value</label><input type="text" id="editFieldInput"></div><div style="display:flex; gap:8px;"><button class="btn btn-secondary" onclick="closeModal('editProfileModal')">Cancel</button><button class="btn" onclick="saveProfileField()">Save</button></div></div></div>
 
 <script type="module">
-    import { initializeApp } from "firebase/app";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut } from "firebase/auth";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, updateDoc, where, onSnapshot, setDoc, getDoc, limit, startAfter, serverTimestamp } from "firebase/firestore";
-    import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, updateDoc, where, onSnapshot, setDoc, getDoc, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyAQnXglRvWW3Z15kf--pHF-k6BxIa4ksqI",
-        authDomain: "ethio-delivery-493df.firebaseapp.com",
-        projectId: "ethio-delivery-493df",
-        storageBucket: "ethio-delivery-493df.firebasestorage.app",
-        messagingSenderId: "1096045910734",
-        appId: "1:1096045910734:web:6fa56402c0817f47704e9f"
-    };
+const firebaseConfig = { apiKey: "AIzaSyAQnXglRvWW3Z15kf--pHF-k6BxIa4ksqI", authDomain: "ethio-delivery-493df.firebaseapp.com", projectId: "ethio-delivery-493df", storageBucket: "ethio-delivery-493df.firebasestorage.app", messagingSenderId: "1096045910734", appId: "1:1096045910734:web:6fa56402c0817f47704e9f" };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
+window.auth = auth; window.db = db; window.storage = storage;
+window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+window.updateProfile = updateProfile; window.onAuthStateChanged = onAuthStateChanged;
+window.signOut = signOut; window.sendPasswordResetEmail = sendPasswordResetEmail;
+window.addDoc = addDoc; window.getDocs = getDocs; window.deleteDoc = deleteDoc;
+window.doc = doc; window.collection = collection; window.query = query;
+window.orderBy = orderBy; window.updateDoc = updateDoc; window.where = where;
+window.onSnapshot = onSnapshot; window.setDoc = setDoc; window.getDoc = getDoc;
+window.limit = limit; window.serverTimestamp = serverTimestamp;
+window.ref = ref; window.uploadBytes = uploadBytes; window.getDownloadURL = getDownloadURL;
 
-    let currentUser = null;
-    let currentUserData = null;
-    let allPosts = [];
-    let map = null;
-    let markers = [];
-    let currentChatUser = null;
-    let messagesUnsubscribe = null;
-    let currentLang = "en";
-    let currentEditId = null;
-    let lastVisibleDoc = null;
-    let isLoadingMore = false;
-    let editingField = null;
-    
-    const ADMIN_EMAILS = ["ethiodeliveryhub@gmail.com", "admin@ethiohub.com"];
-    const POSTS_PER_PAGE = 10;
+console.log("Firebase initialized");
+window.dispatchEvent(new Event('firebaseReady'));
+</script>
 
-    // Language Dictionary
-    const dict = {
-        om: { home:"Mana", add:"Dabali", map:"Kaartaa", chat:"Haasaa", profile:"Profile", settings:"Sajoo", about:"Waa'ee", contact:"Quunnamtii", empty:"Post hin jiru", loading:"Fe'aa...", userType:"Gosa Fayyadamaa", name:"Maqaa", route:"Daandii", phone:"Bilbila", price:"Gatii (Birr)", img:"Suuraa", note:"Yaadannoo", postBtn:"Maxxansi", search:"Barbaadi...", optLoad:"Meeshaa qaba", optTruck:"Konkolaataa qaba", call:"Bilbili", del:"Haqii", edit:"Gulaali", totalPosts:"Posts Koo", cargo:"Meeshaa", trucks:"Konkolaataa", lightMode:"Haala Ifaa", fillAll:"Dirreewwan hunda guuti", postSuccess:"Milkaa'e!", update:"Haaromsi", settingsTitle:"Sajoo" },
-        am: { home:"መነሻ", add:"ጨምር", map:"ካርታ", chat:"መልእክት", profile:"መገለጫ", settings:"ቅንብሮች", about:"ስለ", contact:"አግኙን", empty:"ምንም ልጥፍ የለም", loading:"በመጫን...", userType:"የተጠቃሚ አይነት", name:"ስም", route:"መንገድ", phone:"ስልክ", price:"ዋጋ (ብር)", img:"ምስል", note:"ማስታወሻ", postBtn:"ልጥፍ", search:"ፈልግ...", optLoad:"ዕቃ አለው", optTruck:"ትራክ አለው", call:"ደውል", del:"ሰርዝ", edit:"አርትዕ", totalPosts:"ልጥፎቼ", cargo:"ዕቃ", trucks:"ትራኮች", lightMode:"ብርሃን", fillAll:"ሁሉንም ይሙሉ", postSuccess:"ልጥፍ ተሳካ!", update:"አዘምን", settingsTitle:"ቅንብሮች" },
-        en: { home:"Home", add:"Add", map:"Map", chat:"Chat", profile:"Profile", settings:"Settings", about:"About", contact:"Contact", empty:"No posts", loading:"Loading...", userType:"User Type", name:"Name", route:"Route", phone:"Phone", price:"Price (Birr)", img:"Image", note:"Note", postBtn:"Post", search:"Search...", optLoad:"Has Cargo", optTruck:"Has Truck", call:"Call", del:"Delete", edit:"Edit", totalPosts:"My Posts", cargo:"Cargo", trucks:"Trucks", lightMode:"Light Mode", fillAll:"Fill all fields", postSuccess:"Posted!", update:"Update", settingsTitle:"Settings" }
-    };
-    
-    function t(key) { return dict[currentLang]?.[key] || key; }
-    
-    function escapeHtml(str) { if(!str) return ""; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
-    
-    function showToast(msg, type = '') { 
-        const el = document.getElementById("toast"); 
-        el.innerText = msg; 
-        el.className = 'toast ' + type;
-        el.classList.add("show"); 
-        setTimeout(() => el.classList.remove("show"), 1500); 
+<script>
+const translations = {
+    en: {
+        menu: "Menu", profile: "Profile", notifications: "Notifications", myBookings: "My Bookings",
+        favorites: "Favorites", communityForum: "Community Forum", adminPanel: "Admin Panel",
+        commissionPanel: "Commission Panel", analytics: "Analytics", settings: "Settings",
+        about: "About", contact: "Contact", home: "Home", add: "Add", bookings: "Bookings",
+        map: "Map", chat: "Chat", login: "Login", signUp: "Sign Up", logout: "Logout",
+        forgotPassword: "Forgot Password?", resetEmail: "Password reset email sent!",
+        search: "Search...", all: "All", cargo: "Cargo", trucks: "Trucks",
+        newest: "Newest", oldest: "Oldest", priceHigh: "Price: High-Low", priceLow: "Price: Low-High",
+        topRated: "Top Rated", expiringSoon: "Expiring Soon", newPost: "➕ New Post",
+        post: "Post", update: "Update", userType: "User Type", hasCargo: "📦 Has Cargo",
+        hasTruck: "🚛 Has Truck", category: "Category", agriculture: "🌾 Agriculture",
+        construction: "🏗️ Construction", food: "🍽️ Food", electronics: "📱 Electronics",
+        furniture: "🪑 Furniture", other: "📦 Other", name: "Name", route: "Route",
+        phone: "Phone", price: "Price (Birr)", expiry: "Expires In (Days)",
+        commission: "Commission", itemImage: "Item Image (optional)", note: "Note (optional)",
+        liveMap: "📍 Live Map", shareLocation: "Share My Location", messages: "💬 Messages",
+        back: "← Back", typeMessage: "Type a message...", send: "Send", memberSince: "Member since",
+        myPosts: "My Posts", cargoStats: "Cargo", trucksStats: "Trucks", notSet: "Not set",
+        verified: "✓ Verified", requestVerification: "📋 Request Verification",
+        adminDashboard: "Admin Dashboard", totalUsers: "Total Users", totalPosts: "Total Posts",
+        commissionDashboard: "Commission Dashboard", total: "Total", pending: "Pending",
+        collected: "Collected", rate: "Rate", analyticsDashboard: "Analytics Dashboard",
+        revenue: "Revenue (Birr)", weeklyPosts: "📊 Posts This Week",
+        fillAll: "Fill all fields", posted: "Posted!", updatedPost: "Updated!", deleted: "Deleted!",
+        bookingConfirmed: "Booking confirmed!", favoriteAdded: "Added to favorites!",
+        favoriteRemoved: "Removed from favorites!", forumPosted: "Topic posted!",
+        photoUpdated: "Photo updated!", locationShared: "Location shared!",
+        markAllRead: "Mark All Read", noNotifications: "No notifications",
+        noBookings: "No bookings", noFavorites: "No favorites yet", noTopics: "No topics yet",
+        noPosts: "No posts yet", noUsers: "No users", noRecords: "No records",
+        bookThis: "📅 Book This", startDate: "Start Date", endDate: "End Date",
+        notes: "Notes", confirmBooking: "Confirm Booking", cancel: "Cancel",
+        newTopic: "📝 New Topic", topic: "Topic", forumCategory: "Category",
+        safety: "Safety", routes: "Routes", tips: "Tips", general: "General",
+        message: "Message", share: "📤 Share", whatsapp: "WhatsApp", telegram: "Telegram",
+        copyLink: "Copy Link", close: "Close", lightMode: "Light Mode", colorTheme: "Color Theme",
+        editProfile: "Edit Profile", value: "Value", save: "Save", call: "Call",
+        installApp: "📱 Install App - Add to Home Screen",
+        connecting: "Connecting cargo owners with truck drivers",
+        loading: "Loading...", expired: "⚠️ Expired", birr: "Birr",
+        ethioDeliveryHub: "Ethio Delivery Hub", ethioHubPro: "⚡ Ethio Hub Pro",
+        footer: "© 2025 Ethio Delivery Hub Pro | Developed by Desta Abebe",
+        aboutText: "Complete logistics platform for Ethiopia.",
+        contactPhone: "0983776626", contactEmail: "ethiodeliveryhub@gmail.com",
+        selectDates: "Select dates", passwordMin: "Password must be 6+ characters",
+        loginFailed: "Login failed: ", signupFailed: "Signup failed: ",
+        error: "Error: ", errorDeleting: "Error deleting post", notYourPost: "Not your post",
+        deleteConfirm: "Delete this post?", adminOnly: "Admin only",
+        verificationRequested: "Verification requested!", enterValue: "Enter a value",
+        updatedProfile: "Updated!", errorUpdatingPhoto: "Error updating photo",
+        errorSaving: "Error", notSupported: "Not supported", youAreHere: "You are here",
+        linkCopied: "Link copied!", newBooking: "New booking for ", status: "Status",
+        by: "By", days7: "7 Days", days14: "14 Days", days30: "30 Days", days60: "60 Days",
+        email: "Email", password: "Password", fullName: "Full Name", phoneNumber: "Phone Number",
+        passwordMinChars: "Password (min 6 chars)", createAccount: "Create Account"
+    },
+    am: {
+        menu: "ምናሌ", profile: "ፕሮፋይል", notifications: "ማሳወቂያዎች", myBookings: "የእኔ ቦታ ማስያዣዎች",
+        favorites: "ተወዳጆች", communityForum: "የማህበረሰብ መድረክ", adminPanel: "የአስተዳዳሪ ፓነል",
+        commissionPanel: "የኮሚሽን ፓነል", analytics: "ትንታኔ", settings: "ቅንብሮች",
+        about: "ስለ", contact: "አግኙን", home: "መነሻ", add: "ጨምር", bookings: "ቦታ ማስያዣ",
+        map: "ካርታ", chat: "መልእክት", login: "ግባ", signUp: "ተመዝገብ", logout: "ውጣ",
+        forgotPassword: "የይለፍ ቃል ረሱ?", resetEmail: "የይለፍ ቃል ዳግም ማስጀመሪያ ኢሜይል ተልኳል!",
+        search: "ፈልግ...", all: "ሁሉም", cargo: "እቃ", trucks: "ትራኮች",
+        newest: "አዲሱ", oldest: "አሮጌው", priceHigh: "ዋጋ: ከፍ-ዝቅ", priceLow: "ዋጋ: ዝቅ-ከፍ",
+        topRated: "ከፍተኛ ደረጃ", expiringSoon: "በቅርቡ የሚያልቅ", newPost: "➕ አዲስ ልጥፍ",
+        post: "ልጥፍ", update: "አዘምን", userType: "የተጠቃሚ አይነት", hasCargo: "📦 እቃ አለው",
+        hasTruck: "🚛 ትራክ አለው", category: "ምድብ", agriculture: "🌾 ግብርና",
+        construction: "🏗️ ኮንስትራክሽን", food: "🍽️ ምግብ", electronics: "📱 ኤሌክትሮኒክስ",
+        furniture: "🪑 የቤት እቃ", other: "📦 ሌላ", name: "ስም", route: "መንገድ",
+        phone: "ስልክ", price: "ዋጋ (ብር)", expiry: "የሚያልቅበት (ቀናት)",
+        commission: "ኮሚሽን", itemImage: "የእቃ ምስል", note: "ማስታወሻ",
+        liveMap: "📍 የቀጥታ ካርታ", shareLocation: "አካባቢዬን አጋራ", messages: "💬 መልእክቶች",
+        back: "← ተመለስ", typeMessage: "መልእክት ይጻፉ...", send: "ላክ", memberSince: "አባል ከ",
+        myPosts: "የኔ ልጥፎች", cargoStats: "እቃ", trucksStats: "ትራኮች", notSet: "አልተቀመጠም",
+        verified: "✓ የተረጋገጠ", requestVerification: "📋 ማረጋገጫ ይጠይቁ",
+        adminDashboard: "የአስተዳዳሪ ዳሽቦርድ", totalUsers: "ጠቅላላ ተጠቃሚዎች", totalPosts: "ጠቅላላ ልጥፎች",
+        commissionDashboard: "የኮሚሽን ዳሽቦርድ", total: "ጠቅላላ", pending: "በመጠባበቅ",
+        collected: "ተሰብስቧል", rate: "መጠን", analyticsDashboard: "የትንታኔ ዳሽቦርድ",
+        revenue: "ገቢ (ብር)", weeklyPosts: "📊 በዚህ ሳምንት ልጥፎች",
+        fillAll: "ሁሉንም መስኮች ይሙሉ", posted: "ተለጥፏል!", updatedPost: "ተዘምኗል!",
+        deleted: "ተሰርዟል!", bookingConfirmed: "ቦታ ማስያዝ ተረጋግጧል!",
+        favoriteAdded: "ወደ ተወዳጆች ተጨምሯል!", favoriteRemoved: "ከተወዳጆች ተወግዷል!",
+        forumPosted: "ርዕስ ተለጥፏል!", photoUpdated: "ፎቶ ተዘምኗል!",
+        locationShared: "አካባቢ ተጋርቷል!", markAllRead: "ሁሉንም ምልክት አድርግ",
+        noNotifications: "ምንም ማሳወቂያ የለም", noBookings: "ምንም ቦታ ማስያዣ የለም",
+        noFavorites: "ምንም ተወዳጅ የለም", noTopics: "ምንም ርዕስ የለም",
+        noPosts: "ምንም ልጥፍ የለም", noUsers: "ምንም ተጠቃሚ የለም", noRecords: "ምንም መረጃ የለም",
+        bookThis: "📅 ይህን ያስይዙ", startDate: "የሚጀምርበት ቀን", endDate: "የሚያልቅበት ቀን",
+        notes: "ማስታወሻዎች", confirmBooking: "ማስያዣ ያረጋግጡ", cancel: "ይቅር",
+        newTopic: "📝 አዲስ ርዕስ", topic: "ርዕስ", forumCategory: "ምድብ",
+        safety: "ደህንነት", routes: "መንገዶች", tips: "ምክሮች", general: "አጠቃላይ",
+        message: "መልእክት", share: "📤 አጋራ", whatsapp: "WhatsApp", telegram: "Telegram",
+        copyLink: "ሊንክ ቅዳ", close: "ዝጋ", lightMode: "የብርሃን ሁነታ", colorTheme: "የቀለም ገጽታ",
+        editProfile: "ፕሮፋይል አስተካክል", value: "ዋጋ", save: "አስቀምጥ", call: "ይደውሉ",
+        installApp: "📱 መተግበሪያውን ይጫኑ",
+        connecting: "የእቃ ባለቤቶችን ከትራክ ነጂዎች ጋር ማገናኘት",
+        loading: "በመጫን ላይ...", expired: "⚠️ ጊዜው አልፎበታል", birr: "ብር",
+        ethioDeliveryHub: "ኢትዮ ዴሊቨሪ ሀብ", ethioHubPro: "⚡ ኢትዮ ሀብ ፕሮ",
+        footer: "© 2025 ኢትዮ ዴሊቨሪ ሀብ ፕሮ | በደስታ አበበ የተሰራ",
+        aboutText: "ለኢትዮጵያ የተሟላ የሎጂስቲክስ መድረክ።",
+        contactPhone: "0983776626", contactEmail: "ethiodeliveryhub@gmail.com",
+        selectDates: "ቀኖችን ይምረጡ", passwordMin: "የይለፍ ቃል 6+ ቁምፊዎች መሆን አለበት",
+        loginFailed: "መግባት አልተሳካም: ", signupFailed: "መመዝገብ አልተሳካም: ",
+        error: "ስህተት: ", errorDeleting: "ልጥፍ ማጥፋት ስህተት", notYourPost: "የእርስዎ ልጥፍ አይደለም",
+        deleteConfirm: "ይህን ልጥፍ ይሰርዙ?", adminOnly: "አስተዳዳሪ ብቻ",
+        verificationRequested: "ማረጋገጫ ተጠይቋል!", enterValue: "ዋጋ ያስገቡ", updatedProfile: "ተዘምኗል!",
+        errorUpdatingPhoto: "ፎቶ ማዘመን ስህተት", errorSaving: "ስህተት",
+        notSupported: "አይደገፍም", youAreHere: "እርስዎ እዚህ ነዎት", linkCopied: "ሊንክ ተቀድቷል!",
+        newBooking: "አዲስ ቦታ ማስያዣ ለ ", status: "ሁኔታ", by: "በ",
+        days7: "7 ቀናት", days14: "14 ቀናት", days30: "30 ቀናት", days60: "60 ቀናት",
+        email: "ኢሜይል", password: "የይለፍ ቃል", fullName: "ሙሉ ስም", phoneNumber: "ስልክ ቁጥር",
+        passwordMinChars: "የይለፍ ቃል (ቢያንስ 6 ቁምፊዎች)", createAccount: "መለያ ይፍጠሩ"
+    },
+    om: {
+        menu: "Menu", profile: "Profile", notifications: "Beeksisoota", myBookings: "Qabiyyee Koo",
+        favorites: "Jaalatamtoota", communityForum: "Maree Hawaasaa", adminPanel: "Admin Panel",
+        commissionPanel: "Commission Panel", analytics: "Analytics", settings: "Sajoo",
+        about: "Waa'ee", contact: "Quunnamtii", home: "Mana", add: "Dabali", bookings: "Qabiyyee",
+        map: "Kaartaa", chat: "Haasaa", login: "Seeni", signUp: "Galmaa'i", logout: "Ba'i",
+        forgotPassword: "Password dagatte?", resetEmail: "Email reset ergame!",
+        search: "Barbaadi...", all: "Hunda", cargo: "Meeshaa", trucks: "Konkolaataa",
+        newest: "Haaraa", oldest: "Moofaa", priceHigh: "Gatii: Ol-Gad", priceLow: "Gatii: Gad-Ol",
+        topRated: "Sadarkaa Olaanaa", expiringSoon: "Dhiyootti ni dhumata", newPost: "➕ Post Haaraa",
+        post: "Maxxansi", update: "Haaromsi", userType: "Gosa Fayyadamaa",
+        hasCargo: "📦 Meeshaa qaba", hasTruck: "🚛 Konkolaataa qaba", category: "Gosa",
+        agriculture: "🌾 Qonna", construction: "🏗️ Ijaarsa", food: "🍽️ Nyaata",
+        electronics: "📱 Elektirooniksii", furniture: "🪑 Meeshaa mana", other: "📦 Kan biraa",
+        name: "Maqaa", route: "Daandii", phone: "Bilbila", price: "Gatii (Birr)",
+        expiry: "Kan dhumu (Guyyoota)", commission: "Komiishinii", itemImage: "Suuraa meeshaa",
+        note: "Yaadannoo", liveMap: "📍 Kaartaa Kallattii", shareLocation: "Bakka koo qoodi",
+        messages: "💬 Ergaawwan", back: "← Duubatti", typeMessage: "Ergaa barreessi...",
+        send: "Ergi", memberSince: "Miseensa kan ta'e", myPosts: "Posts Koo",
+        cargoStats: "Meeshaa", trucksStats: "Konkolaataa", notSet: "Hin qabu",
+        verified: "✓ Mirkanaa'e", requestVerification: "📋 Mirkaneessa Gaafadhu",
+        adminDashboard: "Admin Dashboard", totalUsers: "Fayyadamtoota", totalPosts: "Posts",
+        commissionDashboard: "Commission Dashboard", total: "Ida'ama", pending: "Eeggataa",
+        collected: "Fudhatame", rate: "Saffisa", analyticsDashboard: "Analytics Dashboard",
+        revenue: "Galii (Birr)", weeklyPosts: "📊 Torban Kana Posts",
+        fillAll: "Dirreewwan hunda guuti", posted: "Milkaa'e!", updatedPost: "Haaromsi!",
+        deleted: "Haqame!", bookingConfirmed: "Qabiyyeen mirkanaa'e!",
+        favoriteAdded: "Jaalatamtoota keessatti dabale!", favoriteRemoved: "Jaalatamtoota irraa balleesse!",
+        forumPosted: "Mata-duree maxxanse!", photoUpdated: "Suuraan haaromfame!",
+        locationShared: "Bakki qoodame!", markAllRead: "Hunda dubbifame",
+        noNotifications: "Beeksisa hin jiru", noBookings: "Qabiyyeen hin jiru",
+        noFavorites: "Jaalatamtoonni hin jiran", noTopics: "Mata-duree hin jiru",
+        noPosts: "Post hin jiru", noUsers: "Fayyadamtoonni hin jiran", noRecords: "Galmeen hin jiru",
+        bookThis: "📅 Kana Qabiyyi", startDate: "Guyyaa Jalqabaa", endDate: "Guyyaa Dhumaa",
+        notes: "Yaadannoo", confirmBooking: "Qabiyyee Mirkaneessi", cancel: "Haqi",
+        newTopic: "📝 Mata-duree Haaraa", topic: "Mata-duree", forumCategory: "Gosa",
+        safety: "Nageenya", routes: "Daandiilee", tips: "Gorsa", general: "Waliigalaa",
+        message: "Ergaa", share: "📤 Qoodi", whatsapp: "WhatsApp", telegram: "Telegram",
+        copyLink: "Liinkii Kopii", close: "Cufi", lightMode: "Ifa", colorTheme: "Halluu",
+        editProfile: "Profile Gulaali", value: "Gatii", save: "Olkaa'i", call: "Bilbili",
+        installApp: "📱 App Install godhi",
+        connecting: "Abbootii meeshaa konkolaattota waliin walqabsiisa",
+        loading: "Loadaa'aa...", expired: "⚠️ Dhumeera", birr: "Birr",
+        ethioDeliveryHub: "Ethio Delivery Hub", ethioHubPro: "⚡ Ethio Hub Pro",
+        footer: "© 2025 Ethio Delivery Hub Pro | Desta Abebe",
+        aboutText: "Itoophiyaadhaaf platform loojistikii guutuu.",
+        contactPhone: "0983776626", contactEmail: "ethiodeliveryhub@gmail.com",
+        selectDates: "Guyyaa filadhu", passwordMin: "Password 6+ ta'uu qaba",
+        loginFailed: "Seenun milkaa'e: ", signupFailed: "Galmaahuun milkaa'e: ",
+        error: "Dogoggora: ", errorDeleting: "Post haquu dogoggora", notYourPost: "Post kee miti",
+        deleteConfirm: "Post kana haquu?", adminOnly: "Admin qofa",
+        verificationRequested: "Mirkaneessi gaafatame!", enterValue: "Gatii galchi",
+        updatedProfile: "Haaromfame!", errorUpdatingPhoto: "Suuraa haaromsu dogoggora",
+        errorSaving: "Dogoggora", notSupported: "Hin deggaramu", youAreHere: "As jirta",
+        linkCopied: "Liinkiin kopidame!", newBooking: "Qabiyyeen haaraa ", status: "Haala", by: "Kan",
+        days7: "Guyyoota 7", days14: "Guyyoota 14", days30: "Guyyoota 30", days60: "Guyyoota 60",
+        email: "Email", password: "Password", fullName: "Maqaa Guutuu", phoneNumber: "Lakk. Bilbilaa",
+        passwordMinChars: "Password (min 6)", createAccount: "Account Uumi"
     }
+};
 
-    function isAdmin() { return currentUser && ADMIN_EMAILS.includes(currentUser.email); }
-    
-    function showAdminFeatures() {
-        document.getElementById("adminMenuItem").style.display = isAdmin() ? "flex" : "none";
-        document.getElementById("adminBadge").style.display = isAdmin() ? "block" : "none";
-    }
+let currentLang = "en", currentUser = null, currentUserData = null, allPosts = [], map = null;
+let currentChatUser = null, messagesUnsubscribe = null, currentEditId = null, editingField = null;
+let currentView = "list", commissionRate = 10, currentFilter = "all", currentSort = "newest";
+let bookingPostId = null, sharePostId = null, favorites = [], deferredPrompt = null, paymentMethods = [];
 
-    function applyLang() { 
-        document.getElementById("langBtn").innerText = currentLang==="om"?"Oro":(currentLang==="am"?"አማ":"EN");
-        document.getElementById("drawerSettings").innerText = t("settings");
-        document.getElementById("drawerAbout").innerText = t("about");
-        document.getElementById("drawerContact").innerText = t("contact");
-        if(document.getElementById("searchInput")) document.getElementById("searchInput").placeholder = t("search");
-        document.getElementById("addPageTitle").innerHTML = "➕ " + t("add");
-        document.getElementById("lblUserType").innerText = t("userType");
-        document.getElementById("optLoad").innerText = t("optLoad");
-        document.getElementById("optTruck").innerText = t("optTruck");
-        document.getElementById("lblTitle").innerText = t("name");
-        document.getElementById("lblRoute").innerText = t("route");
-        document.getElementById("lblPhone").innerText = t("phone");
-        document.getElementById("lblPrice").innerText = t("price");
-        document.getElementById("lblImg").innerText = t("img");
-        document.getElementById("lblNote").innerText = t("note");
-        document.getElementById("btnPostTop").innerText = currentEditId ? t("update") : t("postBtn");
-        document.getElementById("btnPostBottom").innerText = currentEditId ? t("update") : t("postBtn");
-        document.getElementById("statTotalLbl").innerText = t("totalPosts");
-        document.getElementById("statLoadLbl").innerText = t("cargo");
-        document.getElementById("statTruckLbl").innerText = t("trucks");
-        document.getElementById("themeLbl").innerText = t("lightMode");
-        document.getElementById("settingsTitle").innerText = t("settingsTitle");
-        renderPosts(allPosts);
-    }
+const ADMIN_EMAILS = ["ethiodeliveryhub@gmail.com", "admin@ethiohub.com"];
 
-    window.changeLang = () => { 
-        currentLang = currentLang==="om"?"am":(currentLang==="am"?"en":"om"); 
-        localStorage.setItem("lang", currentLang);
-        applyLang(); 
-    };
+function t(key) { return translations[currentLang]?.[key] || key; }
 
-    if(localStorage.getItem("theme") === "light") { 
-        document.getElementById("themeSwitch").checked = true; 
-        document.getElementById("app").classList.add("light-mode"); 
-    }
-    
-    const savedLang = localStorage.getItem("lang");
-    if(savedLang) currentLang = savedLang;
+function showToast(msg) { const el = document.getElementById("toast"); if(el) { el.innerText = msg; el.classList.add("show"); setTimeout(() => el.classList.remove("show"), 2000); } }
 
-    window.toggleTheme = () => { 
-        document.getElementById("app").classList.toggle("light-mode", document.getElementById("themeSwitch").checked); 
-        localStorage.setItem("theme", document.getElementById("themeSwitch").checked ? "light" : "dark"); 
-    };
+function isAdmin() { return currentUser && ADMIN_EMAILS.includes(currentUser.email); }
 
-    window.previewImage = function(e) {
-        const file = e.target.files[0];
-        const preview = document.getElementById("imgPreview");
-        if(file) { const reader = new FileReader(); reader.onload = ev => { preview.src = ev.target.result; preview.style.display = "block"; }; reader.readAsDataURL(file); }
-        else { preview.style.display = "none"; }
-    };
+function escapeHtml(str) { if(!str) return ""; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 
-    function renderPosts(data) {
-        const container = document.getElementById("postsContainer");
-        if(!container) return;
-        if(!data || data.length === 0) { container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-box-open"></i><p>${t("empty")}</p></div>`; return; }
-        container.innerHTML = data.map(post => `
-            <div class="card">
-                ${post.imageUrl ? `<img class="card-img" src="${post.imageUrl}" alt="img" loading="lazy">` : ""}
-                <span class="badge ${post.role==='load'?'badge-load':'badge-truck'}">${post.role==='load'?t("optLoad"):t("optTruck")}</span>
-                <h3>${escapeHtml(post.title)}</h3>
-                <p><i class="fa-solid fa-location-dot"></i> ${escapeHtml(post.route)}</p>
-                ${post.note ? `<p><i class="fa-solid fa-note-sticky"></i> ${escapeHtml(post.note)}</p>` : ""}
-                <div class="price">💰 ${escapeHtml(post.price)} Birr</div>
-                <div class="post-owner"><i class="fa-solid fa-user"></i> ${escapeHtml(post.userName || post.userEmail || 'User')}</div>
-                <div class="card-actions">
-                    <button class="btn-call" onclick="window.callNumber('${escapeHtml(post.phone)}')"><i class="fa-solid fa-phone"></i> ${t("call")}</button>
-                    ${post.userId !== currentUser?.uid ? `<button class="btn-edit" onclick="window.startChat('${post.userId}','${escapeHtml(post.userName || post.userEmail || 'User')}')"><i class="fa-solid fa-comment"></i> Chat</button>` : ''}
-                    ${(currentUser && (post.userId === currentUser.uid || isAdmin())) ? `
-                        <button class="btn-edit" onclick="window.editPost('${post.id}')"><i class="fa-solid fa-edit"></i></button>
-                        <button class="btn-del" onclick="window.deletePost('${post.id}')"><i class="fa-solid fa-trash"></i></button>
-                    ` : ''}
-                </div>
-            </div>`).join("");
-    }
-    
-    window.callNumber = (phone) => { window.location.href = `tel:${phone}`; };
-    
-    window.searchPosts = () => { 
-        const v = document.getElementById("searchInput")?.value.toLowerCase() || ''; 
-        renderPosts(allPosts.filter(p => (p.title||"").toLowerCase().includes(v) || (p.route||"").toLowerCase().includes(v))); 
-    };
-    
-    window.showPage = (id, btn) => { 
-        document.querySelectorAll(".page").forEach(p => p.classList.remove("active")); 
-        document.getElementById(id).classList.add("active"); 
-        document.querySelectorAll(".nav-btn").forEach(n => n.classList.remove("active")); 
-        if(btn) btn.classList.add("active");
-        if(id === "mapPage") setTimeout(initMap, 50);
-        if(id === "chatPage") loadChatUsers();
-        if(id === "profilePage") updateProfileDisplay();
-        if(id !== "addPage") { currentEditId = null; document.getElementById("btnPostTop").innerText = t("postBtn"); document.getElementById("btnPostBottom").innerText = t("postBtn"); }
-        document.getElementById("footer").style.display = "block";
-    };
-    
-    window.toggleDrawer = () => { 
-        document.getElementById("drawer").classList.toggle("active"); 
-        document.getElementById("overlay").classList.toggle("active"); 
-    };
-    
-    window.openSettings = () => { 
-        document.getElementById("settingsModal").classList.add("active"); 
-        if(document.getElementById("drawer").classList.contains("active")) toggleDrawer();
-    };
-    window.closeSettings = () => document.getElementById("settingsModal").classList.remove("active");
-    window.openAbout = () => { 
-        document.getElementById("aboutModal").classList.add("active"); 
-        if(document.getElementById("drawer").classList.contains("active")) toggleDrawer();
-    };
-    window.closeAbout = () => document.getElementById("aboutModal").classList.remove("active");
-    window.openContact = () => { 
-        document.getElementById("contactModal").classList.add("active"); 
-        if(document.getElementById("drawer").classList.contains("active")) toggleDrawer();
-    };
-    window.closeContact = () => document.getElementById("contactModal").classList.remove("active");
+function closeModal(id) { document.getElementById(id)?.classList.remove("active"); }
 
-    // Profile Functions
-    window.updateProfilePhoto = async (event) => {
-        const file = event.target.files[0];
-        if(!file || !currentUser) return;
-        
-        try {
-            const fileName = `profiles/${currentUser.uid}_${Date.now()}`;
-            const storageRef = ref(storage, fileName);
-            await uploadBytes(storageRef, file);
-            const photoURL = await getDownloadURL(storageRef);
-            
-            await updateProfile(currentUser, { photoURL });
-            await updateDoc(doc(db, "users", currentUser.uid), { photoURL });
-            
-            updateProfileDisplay();
-            showToast("Profile photo updated!");
-        } catch(err) {
-            showToast("Error uploading photo: " + err.message, "error");
-        }
-    };
-    
-    window.editProfileField = (field) => {
-        if(!currentUserData) return;
-        editingField = field;
-        const modal = document.getElementById("editProfileModal");
-        const title = document.getElementById("editProfileTitle");
-        const label = document.getElementById("editFieldLabel");
-        const input = document.getElementById("editFieldInput");
-        
-        if(field === 'name') {
-            title.textContent = 'Edit Name';
-            label.textContent = 'Full Name';
-            input.value = currentUserData.name || currentUser.displayName || '';
-            input.placeholder = 'Enter your name';
-        } else if(field === 'phone') {
-            title.textContent = 'Edit Phone';
-            label.textContent = 'Phone Number';
-            input.value = currentUserData.phone || '';
-            input.placeholder = 'Enter phone number';
-        }
-        
-        modal.classList.add("active");
-    };
-    
-    window.closeEditProfileModal = () => {
-        document.getElementById("editProfileModal").classList.remove("active");
-        editingField = null;
-    };
-    
-    window.saveProfileField = async () => {
-        const value = document.getElementById("editFieldInput").value.trim();
-        if(!value || !currentUser) {
-            showToast("Please enter a value", "error");
-            return;
-        }
-        
-        try {
-            const updates = {};
-            if(editingField === 'name') {
-                updates.name = value;
-                await updateProfile(currentUser, { displayName: value });
-            } else if(editingField === 'phone') {
-                updates.phone = value;
-            }
-            
-            await updateDoc(doc(db, "users", currentUser.uid), updates);
-            
-            // Update local data
-            if(currentUserData) {
-                Object.assign(currentUserData, updates);
-            }
-            
-            updateProfileDisplay();
-            closeEditProfileModal();
-            showToast("Profile updated!");
-        } catch(err) {
-            showToast("Error updating: " + err.message, "error");
-        }
-    };
-    
-    function updateProfileDisplay() {
-        if(!currentUser) return;
-        
-        document.getElementById("profileName").innerText = currentUserData?.name || currentUser.displayName || "User";
-        document.getElementById("profileEmail").innerText = currentUser.email || "";
-        document.getElementById("profilePhone").innerText = currentUserData?.phone || "Not set";
-        
-        // Profile photo
-        const photoURL = currentUserData?.photoURL || currentUser.photoURL;
-        const avatarImg = document.getElementById("profileAvatarImg");
-        const avatarIcon = document.getElementById("profileAvatarIcon");
-        
-        if(photoURL) {
-            avatarImg.src = photoURL;
-            avatarImg.style.display = "block";
-            avatarIcon.style.display = "none";
-        } else {
-            avatarImg.style.display = "none";
-            avatarIcon.style.display = "block";
-        }
-        
-        // Member since
-        if(currentUserData?.createdAt) {
-            const date = new Date(currentUserData.createdAt);
-            document.getElementById("profileMemberSince").innerText = date.toLocaleDateString();
-        } else if(currentUser.metadata?.creationTime) {
-            const date = new Date(currentUser.metadata.creationTime);
-            document.getElementById("profileMemberSince").innerText = date.toLocaleDateString();
-        }
-    }
+function showAdminFeatures() { const a = isAdmin(); ["adminMenuItem","commissionMenuItem","analyticsMenuItem","adminBadge"].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = a ? (id.includes('Badge')?'block':'flex') : "none"; }); }
 
-    // Fast Login
-    window.loginWithEmail = async () => {
-        const email = document.getElementById("loginEmail").value.trim();
-        const password = document.getElementById("loginPassword").value;
-        
-        if(!email || !password) { showToast("Enter email and password", "error"); return; }
-        
-        const loginBtn = document.querySelector('#loginForm .btn');
-        loginBtn.disabled = true;
-        loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-        
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-        } catch(err) { 
-            let message = "Login failed";
-            if(err.code === 'auth/user-not-found') message = "No account found";
-            else if(err.code === 'auth/wrong-password') message = "Wrong password";
-            else if(err.code === 'auth/invalid-email') message = "Invalid email";
-            showToast(message, "error");
-            loginBtn.disabled = false;
-            loginBtn.innerHTML = 'Login';
-        }
-    };
-    
-    // Fast Signup
-    window.signupWithEmail = async () => {
-        const name = document.getElementById("signupName").value.trim();
-        const email = document.getElementById("signupEmail").value.trim();
-        const phone = document.getElementById("signupPhone").value.trim();
-        const password = document.getElementById("signupPassword").value;
-        
-        if(!name || !email || !phone || !password) { showToast("Fill all fields", "error"); return; }
-        if(password.length < 6) { showToast("Password must be 6+ chars", "error"); return; }
-        
-        const signupBtn = document.querySelector('#signupForm .btn');
-        signupBtn.disabled = true;
-        signupBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-        
-        try {
-            const result = await createUserWithEmailAndPassword(auth, email, password);
-            await Promise.all([
-                updateProfile(result.user, { displayName: name }),
-                setDoc(doc(db, "users", result.user.uid), {
-                    name, email, phone,
-                    uid: result.user.uid,
-                    createdAt: Date.now()
-                })
-            ]);
-        } catch(err) { 
-            let message = "Signup failed";
-            if(err.code === 'auth/email-already-in-use') message = "Email already exists";
-            showToast(message, "error");
-            signupBtn.disabled = false;
-            signupBtn.innerHTML = 'Create Account';
-        }
-    };
-    
-    window.logout = async () => {
-        await signOut(auth);
-        toggleDrawer();
-    };
+function applyLanguage() {
+    document.title = t("ethioHubPro");
+    const setText = (id, key) => { const el = document.getElementById(id); if(el) el.innerText = t(key); };
+    const setPlaceholder = (id, key) => { const el = document.getElementById(id); if(el) el.placeholder = t(key); };
+    setText("drawerTitle", "menu"); setText("drawerProfile", "profile");
+    setText("drawerNotifications", "notifications"); setText("drawerBookings", "myBookings");
+    setText("drawerFavorites", "favorites"); setText("drawerForum", "communityForum");
+    setText("drawerAdmin", "adminPanel"); setText("drawerCommission", "commissionPanel");
+    setText("drawerAnalytics", "analytics"); setText("drawerSettings", "settings");
+    setText("drawerAbout", "about"); setText("drawerContact", "contact");
+    setText("authSubtitle", "connecting"); setText("loginTab", "login"); setText("signupTab", "signUp");
+    setText("loginBtn", "login"); setText("signupBtn", "createAccount"); setText("forgotPassword", "forgotPassword");
+    setPlaceholder("loginEmail", "email"); setPlaceholder("loginPassword", "password");
+    setPlaceholder("signupName", "fullName"); setPlaceholder("signupEmail", "email");
+    setPlaceholder("signupPhone", "phoneNumber"); setPlaceholder("signupPassword", "passwordMinChars");
+    setText("navHome", "home"); setText("navAdd", "add"); setText("navBookings", "bookings");
+    setText("navMap", "map"); setText("navChat", "chat"); setPlaceholder("searchInput", "search");
+    const fcs = document.querySelectorAll("#filtersBar .filter-chip");
+    if(fcs.length>=3){fcs[0].innerText=t("all");fcs[1].innerHTML='📦 '+t("cargo");fcs[2].innerHTML='🚛 '+t("trucks");}
+    const ss=document.getElementById("sortSelect");if(ss){ss.options[0].text=t("newest");ss.options[1].text=t("oldest");ss.options[2].text=t("priceHigh");ss.options[3].text=t("priceLow");ss.options[4].text=t("topRated");ss.options[5].text=t("expiringSoon");}
+    setText("addTitle", currentEditId?"update":"newPost"); setText("postBtnText", currentEditId?"update":"post");
+    const al=document.querySelectorAll("#addPage .field label");if(al.length>=9){al[0].innerText=t("userType");al[1].innerText=t("category");al[2].innerText=t("name");al[3].innerText=t("route");al[4].innerText=t("phone");al[5].innerText=t("price");al[6].innerText=t("expiry");al[7].innerText=t("itemImage");al[8].innerText=t("note");}
+    const rl=document.getElementById("role");if(rl){rl.options[0].text=t("hasCargo");rl.options[1].text=t("hasTruck");}
+    const ct=document.getElementById("category");if(ct){ct.options[0].text=t("agriculture");ct.options[1].text=t("construction");ct.options[2].text=t("food");ct.options[3].text=t("electronics");ct.options[4].text=t("furniture");ct.options[5].text=t("other");}
+    const ex=document.getElementById("expiryDays");if(ex){ex.options[0].text=t("days7");ex.options[1].text=t("days14");ex.options[2].text=t("days30");ex.options[3].text=t("days60");}
+    const bkh2=document.querySelector("#bookingsPage h2");if(bkh2)bkh2.innerText="📅 "+t("myBookings");
+    const fvh2=document.querySelector("#favoritesPage h2");if(fvh2)fvh2.innerText="⭐ "+t("favorites");
+    const nth2=document.querySelector("#notificationsPage h2");if(nth2)nth2.innerText="🔔 "+t("notifications");
+    const fmh2=document.querySelector("#forumPage h2");if(fmh2)fmh2.innerText="💬 "+t("communityForum");
+    const mph3=document.querySelector("#mapPage h3");if(mph3)mph3.innerText=t("liveMap");
+    const cht3=document.querySelector("#chatPage h3");if(cht3)cht3.innerText=t("messages");
+    const plb=document.querySelectorAll("#profilePage .lbl");if(plb.length>=3){plb[0].innerText=t("myPosts");plb[1].innerText=t("cargoStats");plb[2].innerText=t("trucksStats");}
+    setText("verifyBtn", "requestVerification");
+    const mab=document.querySelector("#notificationsPage .btn-secondary");if(mab)mab.innerText=t("markAllRead");
+    const fbb=document.querySelector("#forumPage .btn-sm");if(fbb)fbb.innerHTML='+ '+t("newTopic");
+    const mpb=document.querySelector("#mapPage .btn-sm");if(mpb)mpb.innerHTML='<i class="fa-solid fa-location-dot"></i> '+t("shareLocation");
+    setPlaceholder("messageInput", "typeMessage");
+    const sbb=document.querySelector("#chatConversation .btn-sm");if(sbb)sbb.innerText=t("send");
+    document.querySelectorAll(".modal-content h3").forEach(h=>{const m=h.closest(".modal");if(m?.id==="bookingModal")h.innerText=t("bookThis");if(m?.id==="forumPostModal")h.innerText=t("newTopic");if(m?.id==="shareModal")h.innerText=t("share");if(m?.id==="settingsModal")h.innerText="🎨 "+t("settings");if(m?.id==="aboutModal")h.innerText=t("about");if(m?.id==="contactModal")h.innerText=t("contact");if(m?.id==="editProfileModal")h.innerText=t("editProfile");});
+    const bml=document.querySelectorAll("#bookingModal .field label");if(bml.length>=3){bml[0].innerText=t("startDate");bml[1].innerText=t("endDate");bml[2].innerText=t("notes");}
+    const bmb=document.querySelectorAll("#bookingModal .btn");if(bmb.length>=2){bmb[0].innerText=t("confirmBooking");bmb[1].innerText=t("cancel");}
+    const fml=document.querySelectorAll("#forumPostModal .field label");if(fml.length>=3){fml[0].innerText=t("topic");fml[1].innerText=t("forumCategory");fml[2].innerText=t("message");}
+    const fct=document.getElementById("forumCategory");if(fct){fct.options[0].text=t("safety");fct.options[1].text=t("routes");fct.options[2].text=t("tips");fct.options[3].text=t("general");}
+    const fmb=document.querySelectorAll("#forumPostModal .btn");if(fmb.length>=2){fmb[0].innerText=t("post");fmb[1].innerText=t("cancel");}
+    const shb=document.querySelectorAll("#shareModal .btn-sm, #shareModal .btn-secondary");if(shb.length>=4){shb[0].innerHTML='<i class="fab fa-whatsapp"></i> '+t("whatsapp");shb[1].innerHTML='<i class="fab fa-telegram"></i> '+t("telegram");shb[2].innerHTML='<i class="fa-solid fa-copy"></i> '+t("copyLink");shb[3].innerText=t("close");}
+    const stl=document.querySelector("#settingsModal .toggle-row label");if(stl)stl.innerText=t("lightMode");
+    const scl=document.querySelector("#settingsModal label[style]");if(scl)scl.innerText=t("colorTheme");
+    const scb=document.querySelector("#settingsModal .btn");if(scb)scb.innerText=t("close");
+    const abt=document.querySelector("#aboutModal p");if(abt)abt.innerHTML="Ethio Delivery Hub Pro v7.0<br>"+t("aboutText");
+    const acb=document.querySelector("#aboutModal .btn");if(acb)acb.innerText=t("close");
+    const ctt=document.querySelector("#contactModal p");if(ctt)ctt.innerHTML='<i class="fa-solid fa-phone"></i> '+t("contactPhone")+'<br><i class="fa-solid fa-envelope"></i> '+t("contactEmail");
+    const ccb=document.querySelector("#contactModal .btn");if(ccb)ccb.innerText=t("close");
+    const epl=document.querySelector("#editProfileModal .field label");if(epl)epl.innerText=t("value");
+    const epb=document.querySelectorAll("#editProfileModal .btn-secondary, #editProfileModal .btn");if(epb.length>=2){epb[0].innerText=t("cancel");epb[1].innerText=t("save");}
+    setText("footer", "footer");
+    const ib=document.getElementById("installBanner");if(ib)ib.innerText=t("installApp");
+    const cpb=document.getElementById("commissionPreview");if(cpb&&cpb.style.display!=="none"){const crd=document.getElementById("commissionRateDisplay");const cad=document.getElementById("commissionAmountDisplay");cpb.querySelector("span:first-child").innerHTML='🏦 '+t("commission")+' (<span id="commissionRateDisplay">'+(crd?crd.innerText:"0")+'</span>%):';if(cad)cad.innerText=cad.innerText.replace("Birr",t("birr"));}
+    if(allPosts.length > 0) renderPosts(allPosts);
+}
 
-    window.switchAuthTab = (tab) => {
-        document.getElementById("loginForm").style.display = tab === "login" ? "block" : "none";
-        document.getElementById("signupForm").style.display = tab === "login" ? "none" : "block";
-        document.getElementById("loginTab").classList.toggle("active", tab === "login");
-        document.getElementById("signupTab").classList.toggle("active", tab !== "login");
-    };
+function changeLang() { currentLang = currentLang === "om" ? "am" : (currentLang === "am" ? "en" : "om"); localStorage.setItem("lang", currentLang); document.getElementById("langBtn").innerText = currentLang === "om" ? "Oro" : (currentLang === "am" ? "አማ" : "EN"); applyLanguage(); }
 
-    // Map Functions
-    function initMap() {
-        if(map) { map.invalidateSize(); return; }
-        map = L.map('map').setView([9.03, 38.74], 7);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-        loadLocations();
-    }
-    
-    async function loadLocations() {
-        if(!currentUser || !map) return;
-        const snap = await getDocs(query(collection(db, "locations")));
-        markers.forEach(m => map.removeLayer(m));
-        markers = [];
-        snap.forEach(docSnap => {
-            const loc = docSnap.data();
-            if(loc.lat && loc.lng) {
-                const marker = L.marker([loc.lat, loc.lng]).addTo(map);
-                marker.bindPopup(`<b>${escapeHtml(loc.userName || 'User')}</b>`);
-                markers.push(marker);
-            }
-        });
-    }
-    
-    window.getUserLocation = () => {
-        if(!navigator.geolocation) { showToast("Geolocation not supported", "error"); return; }
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            await setDoc(doc(db, "locations", currentUser.uid), {
-                lat, lng,
-                userId: currentUser.uid,
-                userName: currentUser.displayName || currentUser.email,
-                updatedAt: Date.now()
-            });
-            if(map) {
-                map.setView([lat, lng], 13);
-                L.marker([lat, lng]).addTo(map).bindPopup("You are here").openPopup();
-            }
-            showToast("Location shared!");
-        }, () => showToast("Could not get location", "error"));
-    };
-    
-    // Chat Functions
-    async function loadChatUsers() {
-        if(!currentUser) return;
-        const usersList = document.getElementById("chatUsersList");
-        usersList.innerHTML = '<div class="loading"><i class="fa-solid fa-spinner"></i></div>';
-        const usersSnap = await getDocs(collection(db, "users"));
-        let users = [];
-        usersSnap.forEach(docSnap => {
-            if(docSnap.id !== currentUser.uid) users.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        if(users.length === 0) {
-            usersList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-users"></i><p>No other users yet</p></div>';
-            return;
-        }
-        usersList.innerHTML = users.map(user => `
-            <div class="user-item" onclick="window.openChat('${user.id}','${escapeHtml(user.name || user.email || 'User')}')">
-                <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
-                <div class="user-info">
-                    <div class="user-name">${escapeHtml(user.name || user.email || 'User')}</div>
-                    <div class="user-email">${escapeHtml(user.email || '')}</div>
-                </div>
-            </div>
-        `).join("");
-    }
-    
-    window.openChat = (userId, userName) => {
-        currentChatUser = { id: userId, name: userName };
-        document.getElementById("chatUsersList").style.display = "none";
-        document.getElementById("chatConversation").style.display = "block";
-        document.getElementById("chatWithName").innerText = userName;
-        loadMessages(userId);
-    };
-    
-    function backToUsers() {
-        if(messagesUnsubscribe) messagesUnsubscribe();
-        document.getElementById("chatUsersList").style.display = "block";
-        document.getElementById("chatConversation").style.display = "none";
-        currentChatUser = null;
-    }
-    window.backToUsers = backToUsers;
-    
-    function loadMessages(otherUserId) {
-        if(messagesUnsubscribe) messagesUnsubscribe();
-        const chatId = [currentUser.uid, otherUserId].sort().join('_');
-        const q = query(collection(db, "chats", chatId, "messages"), orderBy("timestamp", "asc"));
-        messagesUnsubscribe = onSnapshot(q, (snapshot) => {
-            const messagesContainer = document.getElementById("chatMessages");
-            messagesContainer.innerHTML = "";
-            snapshot.forEach(docSnap => {
-                const msg = docSnap.data();
-                const div = document.createElement("div");
-                div.className = `chat-message ${msg.senderId === currentUser.uid ? 'sent' : 'received'}`;
-                const time = msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
-                div.innerHTML = `<div class="chat-bubble">${escapeHtml(msg.text)}</div><div class="chat-time">${time}</div>`;
-                messagesContainer.appendChild(div);
-            });
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        });
-    }
-    
-    window.sendMessage = async () => {
-        const input = document.getElementById("messageInput");
-        const text = input.value.trim();
-        if(!text || !currentChatUser) return;
-        const chatId = [currentUser.uid, currentChatUser.id].sort().join('_');
-        await addDoc(collection(db, "chats", chatId, "messages"), {
-            text, senderId: currentUser.uid,
-            senderName: currentUser.displayName || currentUser.email,
-            timestamp: serverTimestamp()
-        });
-        input.value = "";
-    };
-    
-    window.startChat = (userId, userName) => {
-        showPage("chatPage", document.querySelector(".nav-btn"));
-        setTimeout(() => openChat(userId, userName), 100);
-    };
-
-    // Posts Functions
-    async function loadPosts() {
-        if(!currentUser) return;
-        try {
-            const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(POSTS_PER_PAGE));
-            const snap = await getDocs(q);
-            allPosts = [];
-            if(!snap.empty) lastVisibleDoc = snap.docs[snap.docs.length - 1];
-            snap.forEach(docSnap => { allPosts.push({ id: docSnap.id, ...docSnap.data() }); });
-            renderPosts(allPosts);
-            const myPosts = allPosts.filter(p => p.userId === currentUser.uid);
-            document.getElementById("statTotal").innerText = myPosts.length;
-            document.getElementById("statLoad").innerText = myPosts.filter(p => p.role === "load").length;
-            document.getElementById("statTruck").innerText = myPosts.filter(p => p.role === "truck").length;
-        } catch(err) { console.error(err); }
-    }
-
-    window.submitPost = async () => {
-        const title = document.getElementById("title").value.trim();
-        const route = document.getElementById("route").value.trim();
-        const phone = document.getElementById("phone").value.trim();
-        const price = document.getElementById("price").value.trim();
-        const role = document.getElementById("role").value;
-        const note = document.getElementById("note").value.trim();
-        const imageFile = document.getElementById("imageInput").files[0];
-        if(!title || !route || !phone || !price) { showToast(t("fillAll"), "error"); return; }
-        
-        // Disable both buttons
-        const btnTop = document.getElementById("btnPostTop");
-        const btnBottom = document.getElementById("btnPostBottom");
-        if(btnTop) btnTop.disabled = true;
-        if(btnBottom) btnBottom.disabled = true;
-        
-        try {
-            let imageUrl = null;
-            if(imageFile) {
-                const fileName = `posts/${Date.now()}_${imageFile.name}`;
-                const storageRef = ref(storage, fileName);
-                await uploadBytes(storageRef, imageFile);
-                imageUrl = await getDownloadURL(storageRef);
-            }
-            
-            if(currentEditId) {
-                const updateData = { title, route, phone, price, role, note };
-                if(imageUrl) updateData.imageUrl = imageUrl;
-                await updateDoc(doc(db, "posts", currentEditId), updateData);
-                showToast(t("postSuccess"));
-                currentEditId = null;
-                document.getElementById("btnPostTop").innerText = t("postBtn");
-                document.getElementById("btnPostBottom").innerText = t("postBtn");
-            } else {
-                await addDoc(collection(db, "posts"), {
-                    title, route, phone, price, role, note, imageUrl: imageUrl || null,
-                    userId: currentUser.uid,
-                    userName: currentUser.displayName || currentUser.email,
-                    userEmail: currentUser.email,
-                    createdAt: Date.now()
-                });
-                showToast(t("postSuccess"));
-            }
-            
-            document.getElementById("title").value = "";
-            document.getElementById("route").value = "";
-            document.getElementById("phone").value = "";
-            document.getElementById("price").value = "";
-            document.getElementById("note").value = "";
-            document.getElementById("imageInput").value = "";
-            document.getElementById("imgPreview").style.display = "none";
-            await loadPosts();
-            showPage("homePage", document.querySelector(".nav-btn"));
-        } catch(err) { showToast("Error: " + err.message, "error"); }
-        finally { 
-            if(btnTop) btnTop.disabled = false;
-            if(btnBottom) btnBottom.disabled = false;
-        }
-    };
-
-    window.deletePost = async (postId) => {
-        if(!confirm("Delete this post?")) return;
-        try {
-            const post = allPosts.find(p => p.id === postId);
-            if(post?.imageUrl) {
-                try { await deleteObject(ref(storage, post.imageUrl)); } catch(e) {}
-            }
-            await deleteDoc(doc(db, "posts", postId));
-            showToast("Deleted!");
-            await loadPosts();
-            if(isAdmin() && document.getElementById("adminPage").classList.contains("active")) loadAdminData();
-        } catch(err) { showToast("Error deleting", "error"); }
-    };
-
-    window.editPost = async (postId) => {
-        const post = allPosts.find(p => p.id === postId);
-        if(!post || (post.userId !== currentUser?.uid && !isAdmin())) { showToast("Not your post", "error"); return; }
-        currentEditId = postId;
-        document.getElementById("title").value = post.title || "";
-        document.getElementById("route").value = post.route || "";
-        document.getElementById("phone").value = post.phone || "";
-        document.getElementById("price").value = post.price || "";
-        document.getElementById("role").value = post.role || "load";
-        document.getElementById("note").value = post.note || "";
-        document.getElementById("btnPostTop").innerText = t("update");
-        document.getElementById("btnPostBottom").innerText = t("update");
-        showPage("addPage", document.querySelector(".nav-btn"));
-    };
-
-    window.openAdminPanel = () => {
-        if(!isAdmin()) { showToast("Admin access only", "error"); return; }
-        showPage("adminPage", document.querySelector(".nav-btn"));
-        loadAdminData();
-        toggleDrawer();
-    };
-    
-    async function loadAdminData() {
-        if(!isAdmin()) return;
-        const postsSnap = await getDocs(collection(db, "posts"));
-        const usersSnap = await getDocs(collection(db, "users"));
-        document.getElementById("adminTotalPosts").innerText = postsSnap.size;
-        document.getElementById("adminTotalUsers").innerText = usersSnap.size;
-        
-        const adminPostsList = document.getElementById("adminPostsList");
-        adminPostsList.innerHTML = "";
-        postsSnap.forEach(docSnap => {
-            const post = docSnap.data();
-            adminPostsList.innerHTML += `
-                <div class="card" style="margin:10px 0;">
-                    <h3>${escapeHtml(post.title)}</h3>
-                    <p>By: ${escapeHtml(post.userName || post.userEmail || 'User')}</p>
-                    <button class="btn-del" onclick="window.adminDeletePost('${docSnap.id}')" style="margin-top:10px;">Delete Post</button>
-                </div>
-            `;
-        });
-        
-        const adminUsersList = document.getElementById("adminUsersList");
-        adminUsersList.innerHTML = "";
-        usersSnap.forEach(docSnap => {
-            const user = docSnap.data();
-            adminUsersList.innerHTML += `
-                <div class="card" style="margin:10px 0;">
-                    <h3>${escapeHtml(user.name || 'No name')}</h3>
-                    <p>Email: ${escapeHtml(user.email || '')}</p>
-                    <p>Phone: ${escapeHtml(user.phone || '')}</p>
-                    ${user.uid !== currentUser.uid ? `<button class="btn-del" onclick="window.adminDeleteUser('${docSnap.id}')">Delete User</button>` : ''}
-                </div>
-            `;
-        });
-    }
-    
-    window.adminDeletePost = async (postId) => {
-        if(!confirm("Delete this post?")) return;
-        await deleteDoc(doc(db, "posts", postId));
-        showToast("Post deleted");
-        loadAdminData();
-        loadPosts();
-    };
-    
-    window.adminDeleteUser = async (userId) => {
-        if(!confirm("Delete this user and all their posts?")) return;
-        const postsSnap = await getDocs(query(collection(db, "posts"), where("userId", "==", userId)));
-        postsSnap.forEach(async (postDoc) => { await deleteDoc(doc(db, "posts", postDoc.id)); });
-        await deleteDoc(doc(db, "users", userId));
-        showToast("User deleted");
-        loadAdminData();
-        loadPosts();
-    };
-
-    // Fast Auth State Listener
-    onAuthStateChanged(auth, async (user) => {
+window.addEventListener('firebaseReady', () => {
+    window.onAuthStateChanged(window.auth, async (user) => {
         if(user) {
-            currentUser = user;
-            
-            // Show main app immediately
-            document.getElementById("authPage").classList.remove("active");
-            document.getElementById("mainApp").style.display = "flex";
-            document.getElementById("bottomNav").style.display = "flex";
-            document.getElementById("footer").style.display = "block";
-            
-            showAdminFeatures();
+            currentUser = user; document.getElementById("authPage").classList.remove("active");
+            document.getElementById("mainApp").style.display = "flex"; document.getElementById("bottomNav").style.display = "flex";
+            document.getElementById("footer").style.display = "block"; showAdminFeatures();
             showPage("homePage", document.querySelector(".nav-btn"));
-            
-            // Load data in background
-            loadUserDataInBackground(user.uid);
-            loadPosts();
-        } else if(!document.getElementById("authPage").classList.contains("active")) {
-            currentUser = null;
-            currentUserData = null;
-            document.getElementById("mainApp").style.display = "none";
-            document.getElementById("bottomNav").style.display = "none";
-            document.getElementById("footer").style.display = "none";
+            const ud = await window.getDoc(window.doc(window.db, "users", user.uid));
+            if(ud.exists()) { currentUserData = ud.data(); } else { currentUserData = { name: user.displayName || '', email: user.email || '', phone: '', uid: user.uid, createdAt: Date.now(), rating: 0, ratingCount: 0, verified: false }; await window.setDoc(window.doc(window.db, "users", user.uid), currentUserData); }
+            updateProfileDisplay(); loadPosts(); loadPaymentMethods(); loadFavorites(); loadNotifications(); applyLanguage();
+        } else {
+            currentUser = null; currentUserData = null; document.getElementById("mainApp").style.display = "none";
+            document.getElementById("bottomNav").style.display = "none"; document.getElementById("footer").style.display = "none";
             document.getElementById("authPage").classList.add("active");
         }
     });
-    
-    async function loadUserDataInBackground(uid) 
-    
-    applyLang();
+    if(localStorage.getItem("lang")) { currentLang = localStorage.getItem("lang"); document.getElementById("langBtn").innerText = currentLang === "om" ? "Oro" : (currentLang === "am" ? "አማ" : "EN"); }
+    if(localStorage.getItem("colorTheme")) setTheme(localStorage.getItem("colorTheme"));
+    if(localStorage.getItem("theme") === "light") { const ts = document.getElementById("themeSwitch"); if(ts) ts.checked = true; document.getElementById("app").classList.add("light-mode"); }
+    if(localStorage.getItem("postView")) { currentView = localStorage.getItem("postView"); document.getElementById("listViewBtn")?.classList.toggle("active", currentView === "list"); document.getElementById("gridViewBtn")?.classList.toggle("active", currentView === "grid"); }
+});
+
+async function loginWithEmail() {
+    const email = document.getElementById("loginEmail")?.value.trim(), password = document.getElementById("loginPassword")?.value;
+    if(!email || !password) { showToast(t("fillAll")); return; }
+    const btn = document.getElementById("loginBtn"); btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner spinner"></i> ' + t("loading");
+    try { await window.signInWithEmailAndPassword(window.auth, email, password); }
+    catch(err) { showToast(t("loginFailed") + err.message); btn.disabled = false; btn.innerText = t("login"); }
+}
+
+async function signupWithEmail() {
+    const name = document.getElementById("signupName")?.value.trim(), email = document.getElementById("signupEmail")?.value.trim();
+    const phone = document.getElementById("signupPhone")?.value.trim(), password = document.getElementById("signupPassword")?.value;
+    if(!name || !email || !phone || !password) { showToast(t("fillAll")); return; }
+    if(password.length < 6) { showToast(t("passwordMin")); return; }
+    const btn = document.getElementById("signupBtn"); btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner spinner"></i> ' + t("loading");
+    try {
+        const result = await window.createUserWithEmailAndPassword(window.auth, email, password);
+        await window.updateProfile(result.user, { displayName: name });
+        await window.setDoc(window.doc(window.db, "users", result.user.uid), { name, email, phone, uid: result.user.uid, createdAt: Date.now(), rating: 0, ratingCount: 0, verified: false });
+    } catch(err) { showToast(t("signupFailed") + err.message); btn.disabled = false; btn.innerHTML = t("createAccount"); }
+}
+
+async function resetPassword() {
+    const email = document.getElementById("loginEmail")?.value.trim();
+    if(!email) { showToast(t("fillAll")); return; }
+    try { await window.sendPasswordResetEmail(window.auth, email); showToast(t("resetEmail")); }
+    catch(err) { showToast(t("error") + err.message); }
+}
+
+async function logout() { await window.signOut(window.auth); toggleDrawer(); }
+
+function switchAuthTab(tab) {
+    document.getElementById("loginForm").style.display = tab === "login" ? "block" : "none";
+    document.getElementById("signupForm").style.display = tab === "login" ? "none" : "block";
+    document.getElementById("loginTab").classList.toggle("active", tab === "login");
+    document.getElementById("signupTab").classList.toggle("active", tab !== "login");
+}
+
+function showPage(id, btn) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    const page = document.getElementById(id); if(page) page.classList.add("active");
+    document.querySelectorAll(".nav-btn").forEach(n => n.classList.remove("active"));
+    if(btn) btn.classList.add("active");
+    if(id === "mapPage") setTimeout(initMap, 50);
+    if(id === "chatPage") loadChatUsers(); if(id === "profilePage") updateProfileDisplay();
+    if(id === "commissionPage") { loadCommissionData(); loadPaymentMethods(); }
+    if(id === "analyticsPage") loadAnalytics(); if(id === "notificationsPage") loadNotifications();
+    if(id === "forumPage") loadForum(); if(id === "bookingsPage") loadBookings();
+    if(id === "favoritesPage") loadFavoritesPage(); if(id !== "addPage") currentEditId = null;
+    document.getElementById("footer").style.display = "block";
+}
+
+function toggleDrawer() { document.getElementById("drawer").classList.toggle("active"); document.getElementById("overlay").classList.toggle("active"); }
+window.openProfile = () => { showPage("profilePage"); updateProfileDisplay(); toggleDrawer(); };
+
+async function loadPosts() {
+    if(!currentUser) return;
+    try {
+        const rd = await window.getDoc(window.doc(window.db, "settings", "commission"));
+        if(rd.exists()) commissionRate = rd.data().rate || 10;
+        const q = window.query(window.collection(window.db, "posts"), window.orderBy("createdAt", "desc"), window.limit(50));
+        const s = await window.getDocs(q); allPosts = [];
+        s.forEach(d => { const p = d.data(); if(p.expiresAt && p.expiresAt < Date.now() && p.status !== "expired") { window.updateDoc(window.doc(window.db, "posts", d.id), { status: "expired" }); } allPosts.push({ id: d.id, ...p }); });
+        renderPosts(allPosts);
+        const my = allPosts.filter(p => p.userId === currentUser.uid);
+        document.getElementById("statTotal").innerText = my.length;
+        document.getElementById("statLoad").innerText = my.filter(p => p.role === "load").length;
+        document.getElementById("statTruck").innerText = my.filter(p => p.role === "truck").length;
+    } catch(err) { console.error("Error loading posts:", err); }
+}
+
+function renderPosts(data) {
+    const c = document.getElementById("postsContainer"); if(!c) return;
+    let filtered = [...data];
+    if(currentFilter === "load") filtered = filtered.filter(p => p.role === "load");
+    if(currentFilter === "truck") filtered = filtered.filter(p => p.role === "truck");
+    if(currentSort === "newest") filtered.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    if(currentSort === "oldest") filtered.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    if(currentSort === "price-high") filtered.sort((a,b)=>(parseFloat(b.price)||0)-(parseFloat(a.price)||0));
+    if(currentSort === "price-low") filtered.sort((a,b)=>(parseFloat(a.price)||0)-(parseFloat(b.price)||0));
+    if(currentSort === "rating") filtered.sort((a,b)=>((b.userRating||0)-(a.userRating||0)));
+    if(currentSort === "expiring") filtered.sort((a,b)=>((a.expiresAt||0)-(b.expiresAt||0)));
+    if(filtered.length === 0) { c.innerHTML = `<div class="empty-state"><i class="fa-solid fa-box-open"></i><p>${t("noPosts")}</p></div>`; return; }
+    if(currentView === "grid") {
+        c.innerHTML = `<div class="posts-grid">${filtered.map(post => `<div class="grid-card" data-id="${post.id}">${post.imageUrl ? `<img class="grid-card-image" src="${post.imageUrl}" loading="lazy">` : `<div class="grid-card-image-placeholder"><i class="fa-solid ${post.role==='load'?'fa-box':'fa-truck'}" style="color:rgba(255,152,0,0.3);"></i></div>`}<span class="grid-card-badge ${post.role==='load'?'grid-badge-load':'grid-badge-truck'}">${post.role==='load'?'📦':'🚛'}</span><div class="grid-card-body"><div class="grid-card-title">${escapeHtml(post.title)}</div><div class="grid-card-route"><i class="fa-solid fa-location-dot"></i> ${escapeHtml(post.route)}</div><div class="grid-card-price">💰 ${escapeHtml(post.price)} ${t("birr")}</div><div class="grid-card-footer"><span class="grid-card-owner">👤 ${escapeHtml(post.userName?.substring(0,10) || 'User')}</span><div class="grid-card-actions"><button class="grid-action-btn grid-btn-call" onclick="event.stopPropagation();window.callNumber('${escapeHtml(post.phone)}')"><i class="fa-solid fa-phone"></i></button>${post.userId !== currentUser?.uid ? `<button class="grid-action-btn grid-btn-chat" onclick="event.stopPropagation();window.startChat('${post.userId}','${escapeHtml(post.userName)}')"><i class="fa-solid fa-comment"></i></button>` : ''}</div></div></div></div>`).join("")}</div>`;
+    } else {
+        c.innerHTML = filtered.map(post => { const isExpiringSoon = post.expiresAt && post.expiresAt < Date.now() + 3*86400000; const isExpired = post.expiresAt && post.expiresAt < Date.now(); return `<div class="card" style="${isExpired ? 'opacity:0.5' : ''}">${post.imageUrl ? `<img class="card-img" src="${post.imageUrl}" loading="lazy">` : ""}<span class="badge ${post.role==='load'?'badge-load':'badge-truck'}">${post.role==='load'?t("hasCargo"):t("hasTruck")}</span>${post.category ? `<span class="badge badge-cat">#${post.category}</span>` : ''}${isExpiringSoon ? `<span class="expiry-tag soon">⏰ ${t("expiringSoon")}</span>` : ''}${isExpired ? `<span class="expiry-tag">${t("expired")}</span>` : ''}<h3>${escapeHtml(post.title)}</h3><p><i class="fa-solid fa-location-dot"></i> ${escapeHtml(post.route)}</p>${post.note ? `<p><i class="fa-solid fa-note-sticky"></i> ${escapeHtml(post.note)}</p>` : ""}<div class="price">💰 ${escapeHtml(post.price)} ${t("birr")}</div>${post.commission ? `<div class="commission-info"><span>🏦 ${t("commission")}:</span><span>${post.commission} ${t("birr")}</span></div>` : ''}<div class="post-owner"><span><i class="fa-solid fa-user"></i> ${escapeHtml(post.userName || 'User')} ${post.userVerified ? '<span class="verified-badge">✓</span>' : ''}</span><span class="rating-badge">⭐ ${(post.userRating || 0).toFixed(1)}</span></div><div class="card-actions"><button class="btn-call" onclick="event.stopPropagation();window.callNumber('${escapeHtml(post.phone)}')"><i class="fa-solid fa-phone"></i> ${t("call")}</button>${post.userId !== currentUser?.uid ? `<button class="btn-chat" onclick="event.stopPropagation();window.startChat('${post.userId}','${escapeHtml(post.userName)}')"><i class="fa-solid fa-comment"></i></button>` : ''}<button class="btn-book" onclick="event.stopPropagation();openBookingModal('${post.id}')"><i class="fa-solid fa-calendar-check"></i></button><button class="btn-share" onclick="event.stopPropagation();openShareModal('${post.id}')"><i class="fa-solid fa-share"></i></button><button class="btn-fav ${favorites.includes(post.id)?'active':''}" onclick="event.stopPropagation();toggleFavorite('${post.id}')"><i class="fa-solid fa-bookmark"></i></button>${(currentUser && (post.userId === currentUser.uid || isAdmin())) ? `<button class="btn-edit" onclick="event.stopPropagation();window.editPost('${post.id}')"><i class="fa-solid fa-edit"></i></button><button class="btn-del" onclick="event.stopPropagation();window.deletePost('${post.id}')"><i class="fa-solid fa-trash"></i></button>` : ''}</div></div>`; }).join("");
+    }
+}
+
+async function submitPost() {
+    const title = document.getElementById("title")?.value.trim(), route = document.getElementById("route")?.value.trim(), phone = document.getElementById("phone")?.value.trim(), price = parseFloat(document.getElementById("price")?.value), role = document.getElementById("role")?.value, note = document.getElementById("note")?.value.trim(), category = document.getElementById("category")?.value, expiryDays = parseInt(document.getElementById("expiryDays")?.value) || 14, imageFile = document.getElementById("imageInput")?.files[0];
+    if(!title || !route || !phone || !price) { showToast(t("fillAll")); return; }
+    const ca = (price * commissionRate) / 100, exp = Date.now() + expiryDays * 86400000;
+    try { let iu = null; if(imageFile) { const sr = window.ref(window.storage, `posts/${Date.now()}_${imageFile.name}`); await window.uploadBytes(sr, imageFile); iu = await window.getDownloadURL(sr); } if(currentEditId) { await window.updateDoc(window.doc(window.db, "posts", currentEditId), { title, route, phone, price, role, note, category, expiresAt: exp, commission: ca, ...(iu && { imageUrl: iu }) }); showToast(t("updatedPost")); currentEditId = null; } else { const pr = await window.addDoc(window.collection(window.db, "posts"), { title, route, phone, price, role, note, category, expiresAt: exp, imageUrl: iu || null, commission: ca, userId: currentUser.uid, userName: currentUser.displayName || currentUser.email, userRating: currentUserData?.rating || 0, userVerified: currentUserData?.verified || false, status: "active", offers: [], createdAt: Date.now() }); await window.addDoc(window.collection(window.db, "commissions"), { postId: pr.id, postTitle: title, amount: ca, rate: commissionRate, userId: currentUser.uid, userName: currentUser.displayName || currentUser.email, status: "pending", createdAt: Date.now() }); showToast(t("posted")); } ["title","route","phone","price","note"].forEach(id => { const el = document.getElementById(id); if(el) el.value = ""; }); document.getElementById("imageInput").value = ""; document.getElementById("imgPreview").style.display = "none"; document.getElementById("commissionPreview").style.display = "none"; await loadPosts(); showPage("homePage", document.querySelector(".nav-btn")); } catch(err) { showToast(t("error") + err.message); }
+}
+
+window.deletePost = async (id) => { if(!confirm(t("deleteConfirm"))) return; try { await window.deleteDoc(window.doc(window.db, "posts", id)); showToast(t("deleted")); await loadPosts(); } catch(err) { showToast(t("errorDeleting")); } };
+window.editPost = async (id) => { const post = allPosts.find(x => x.id === id); if(!post || (post.userId !== currentUser?.uid && !isAdmin())) { showToast(t("notYourPost")); return; } currentEditId = id; ["title","route","phone","price","note"].forEach(f => { const el = document.getElementById(f); if(el) el.value = post[f] || ""; }); document.getElementById("role").value = post.role || "load"; document.getElementById("category").value = post.category || "other"; calculateCommissionPreview(); showPage("addPage", document.querySelectorAll(".nav-btn")[1]); };
+async function loadFavorites() { if(!currentUser) return; const docRef = await window.getDoc(window.doc(window.db, "favorites", currentUser.uid)); if(docRef.exists()) favorites = docRef.data().posts || []; }
+async function toggleFavorite(postId) { if(!currentUser) return; const index = favorites.indexOf(postId); if(index > -1) { favorites.splice(index, 1); showToast(t("favoriteRemoved")); } else { favorites.push(postId); showToast(t("favoriteAdded")); } await window.setDoc(window.doc(window.db, "favorites", currentUser.uid), { posts: favorites }, { merge: true }); renderPosts(allPosts); }
+async function loadFavoritesPage() { const container = document.getElementById("favoritesContainer"); if(container) { const favPosts = allPosts.filter(p => favorites.includes(p.id)); if(favPosts.length === 0) { container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-bookmark"></i><p>${t("noFavorites")}</p></div>`; } else { container.innerHTML = favPosts.map(post => `<div class="card"><h3>${escapeHtml(post.title)}</h3><p>${escapeHtml(post.route)}</p><div class="price">💰 ${escapeHtml(post.price)} ${t("birr")}</div></div>`).join(""); } } }
+function openBookingModal(postId) { bookingPostId = postId; document.getElementById("bookingModal").classList.add("active"); }
+async function confirmBooking() { if(!currentUser || !bookingPostId) return; const post = allPosts.find(p => p.id === bookingPostId); if(!post) return; const startDate = document.getElementById("bookingStartDate").value, endDate = document.getElementById("bookingEndDate").value, notes = document.getElementById("bookingNotes").value; if(!startDate || !endDate) { showToast(t("selectDates")); return; } await window.addDoc(window.collection(window.db, "bookings"), { postId: post.id, postTitle: post.title, bookedBy: currentUser.uid, bookedByName: currentUser.displayName, postOwner: post.userId, startDate, endDate, notes, status: "pending", createdAt: Date.now() }); await sendNotification(post.userId, "booking", t("newBooking") + post.title); closeModal("bookingModal"); showToast(t("bookingConfirmed")); }
+async function loadBookings() { if(!currentUser) return; const q = window.query(window.collection(window.db, "bookings"), window.orderBy("createdAt", "desc"), window.limit(30)); const snapshot = await window.getDocs(q); const container = document.getElementById("bookingsContainer"); if(container) { container.innerHTML = ""; snapshot.forEach(doc => { const b = doc.data(); container.innerHTML += `<div class="card"><h3>${escapeHtml(b.postTitle)}</h3><p>${t("status")}: ${b.status}</p><p>${b.startDate} - ${b.endDate}</p></div>`; }); if(snapshot.empty) container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-calendar-xmark"></i><p>${t("noBookings")}</p></div>`; } }
+function openShareModal(postId) { sharePostId = postId; document.getElementById("shareModal").classList.add("active"); }
+function shareToWhatsApp() { const post = allPosts.find(p => p.id === sharePostId); if(!post) return; const text = encodeURIComponent(`${post.title} - ${post.route} - ${post.price} ${t("birr")}\n${t("contact")}: ${post.phone}`); window.open(`https://wa.me/?text=${text}`, '_blank'); }
+function shareToTelegram() { const post = allPosts.find(p => p.id === sharePostId); if(!post) return; const text = encodeURIComponent(`${post.title} - ${post.route} - ${post.price} ${t("birr")}\n${t("contact")}: ${post.phone}`); window.open(`https://t.me/share/url?url=&text=${text}`, '_blank'); }
+function copyPostLink() { navigator.clipboard.writeText(`https://ethiohub.app/post/${sharePostId}`); showToast(t("linkCopied")); }
+async function sendNotification(userId, type, message) { await window.addDoc(window.collection(window.db, "notifications"), { userId, type, message, read: false, createdAt: Date.now() }); }
+async function loadNotifications() { if(!currentUser) return; const q = window.query(window.collection(window.db, "notifications"), window.where("userId", "==", currentUser.uid), window.orderBy("createdAt", "desc"), window.limit(50)); const snapshot = await window.getDocs(q); const list = document.getElementById("notificationList"); const count = document.getElementById("headerNotifCount"); let unreadCount = 0; if(list) { list.innerHTML = ""; snapshot.forEach(doc => { const n = doc.data(); if(!n.read) unreadCount++; list.innerHTML += `<div class="notification-item ${n.read ? '' : 'unread'}" onclick="markNotificationRead('${doc.id}')"><div class="notification-icon" style="background:${n.type==='booking'?'var(--info)':'var(--primary)'}"><i class="fa-solid ${n.type==='booking'?'fa-calendar':'fa-bell'}"></i></div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">${n.message}</div><div style="font-size:9px;color:var(--muted);">${new Date(n.createdAt).toLocaleString()}</div></div></div>`; }); if(snapshot.empty) list.innerHTML = `<div class="empty-state"><i class="fa-solid fa-bell-slash"></i><p>${t("noNotifications")}</p></div>`; } if(count) { count.style.display = unreadCount > 0 ? 'flex' : 'none'; count.innerText = unreadCount; } }
+async function markNotificationRead(notifId) { await window.updateDoc(window.doc(window.db, "notifications", notifId), { read: true }); loadNotifications(); }
+async function markAllNotificationsRead() { if(!currentUser) return; const q = window.query(window.collection(window.db, "notifications"), window.where("userId", "==", currentUser.uid), window.where("read", "==", false)); const snapshot = await window.getDocs(q); snapshot.forEach(async (d) => { await window.updateDoc(window.doc(window.db, "notifications", d.id), { read: true }); }); loadNotifications(); }
+async function loadForum() { const q = window.query(window.collection(window.db, "forum"), window.orderBy("createdAt", "desc"), window.limit(30)); const snapshot = await window.getDocs(q); const container = document.getElementById("forumContainer"); if(container) { container.innerHTML = ""; snapshot.forEach(doc => { const post = doc.data(); container.innerHTML += `<div class="forum-post"><strong>${escapeHtml(post.topic)}</strong><span class="badge badge-cat">#${post.category}</span><p>${escapeHtml(post.message)}</p><small>${t("by")}: ${escapeHtml(post.userName)}</small></div>`; }); if(snapshot.empty) container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-comments"></i><p>${t("noTopics")}</p></div>`; } }
+function newForumPost() { document.getElementById("forumPostModal").classList.add("active"); }
+async function submitForumPost() { const topic = document.getElementById("forumTopic")?.value.trim(), category = document.getElementById("forumCategory")?.value, message = document.getElementById("forumMessage")?.value.trim(); if(!topic || !message) { showToast(t("fillAll")); return; } await window.addDoc(window.collection(window.db, "forum"), { topic, category, message, userId: currentUser.uid, userName: currentUser.displayName || currentUser.email, createdAt: Date.now() }); closeModal("forumPostModal"); showToast(t("forumPosted")); loadForum(); }
+async function loadCommissionData() { if(!currentUser) return; const q = isAdmin() ? window.query(window.collection(window.db, "commissions"), window.orderBy("createdAt", "desc"), window.limit(50)) : window.query(window.collection(window.db, "commissions"), window.where("userId", "==", currentUser.uid), window.orderBy("createdAt", "desc"), window.limit(50)); const s = await window.getDocs(q); const cn = document.getElementById("commissionLogContainer"); if(!cn) return; let tt = 0, pt = 0, ct = 0; cn.innerHTML = ""; s.forEach(d => { const x = d.data(); tt += x.amount || 0; if(x.status === "pending") pt += x.amount || 0; if(x.status === "collected" || x.status === "paid") ct += x.amount || 0; cn.innerHTML += `<div style="padding:10px;border-bottom:1px solid var(--border);"><b>${escapeHtml(x.postTitle)}</b> - ${x.amount} ${t("birr")} - ${x.status}</div>`; }); if(s.empty) cn.innerHTML = `<div class="empty-state"><p>${t("noRecords")}</p></div>`; document.getElementById("totalCommission").innerText = tt.toFixed(0); document.getElementById("pendingCommission").innerText = pt.toFixed(0); document.getElementById("collectedCommission").innerText = ct.toFixed(0); }
+async function loadPaymentMethods() { const d = await window.getDoc(window.doc(window.db, "settings", "paymentMethods")); if(d.exists()) paymentMethods = d.data().methods || []; }
+async function loadAnalytics() { if(!isAdmin()) return; const ps = await window.getDocs(window.collection(window.db, "posts")); const us = await window.getDocs(window.collection(window.db, "users")); document.getElementById("analyticsTotalPosts").innerText = ps.size; document.getElementById("analyticsTotalUsers").innerText = us.size; const wd = [0,0,0,0,0,0,0]; const wa = new Date(Date.now() - 7*86400000); ps.forEach(d => { const p = d.data(); if(p.createdAt && p.createdAt > wa.getTime()) { const dy = new Date(p.createdAt).getDay(); wd[dy===0?6:dy-1]++; } }); const mx = Math.max(...wd, 1); document.getElementById("weeklyChart").innerHTML = wd.map(v => `<div class="chart-bar-item" style="height:${(v/mx)*80}px;" title="${v}"></div>`).join(""); }
+function updateProfileDisplay() { if(!currentUser) return; document.getElementById("profileName").innerText = currentUserData?.name || currentUser.displayName || "User"; document.getElementById("profileEmail").innerText = currentUser.email || ""; document.getElementById("profilePhone").innerText = currentUserData?.phone || t("notSet"); document.getElementById("profileRatingNum").innerText = (currentUserData?.rating || 0).toFixed(1); document.getElementById("profileRatingCount").innerText = currentUserData?.ratingCount || 0; document.getElementById("verifiedBadge").style.display = currentUserData?.verified ? "inline" : "none"; const pu = currentUserData?.photoURL || currentUser.photoURL; const ai = document.getElementById("profileAvatarImg"); const ac = document.getElementById("profileAvatarIcon"); if(ai && ac) { if(pu) { ai.src = pu; ai.style.display = "block"; ac.style.display = "none"; } else { ai.style.display = "none"; ac.style.display = "block"; } } if(currentUserData?.createdAt) { document.getElementById("profileMemberSince").innerText = new Date(currentUserData.createdAt).toLocaleDateString(); } }
+window.updateProfilePhoto = async (e) => { const file = e.target.files[0]; if(!file || !currentUser) return; try { const sr = window.ref(window.storage, `profiles/${currentUser.uid}_${Date.now()}`); await window.uploadBytes(sr, file); const u = await window.getDownloadURL(sr); await window.updateProfile(currentUser, { photoURL: u }); await window.updateDoc(window.doc(window.db, "users", currentUser.uid), { photoURL: u }); if(currentUserData) currentUserData.photoURL = u; updateProfileDisplay(); showToast(t("photoUpdated")); } catch(err) { showToast(t("errorUpdatingPhoto")); } };
+window.editProfileField = (f) => { if(!currentUserData) return; editingField = f; const i = document.getElementById("editFieldInput"); if(i) i.value = f === 'name' ? (currentUserData.name || currentUser.displayName || '') : (currentUserData.phone || ''); document.getElementById("editProfileModal").classList.add("active"); };
+window.saveProfileField = async () => { const v = document.getElementById("editFieldInput")?.value.trim(); if(!v || !currentUser) { showToast(t("enterValue")); return; } try { const u = {}; if(editingField === 'name') { u.name = v; await window.updateProfile(currentUser, { displayName: v }); } else if(editingField === 'phone') u.phone = v; await window.updateDoc(window.doc(window.db, "users", currentUser.uid), u); if(currentUserData) Object.assign(currentUserData, u); updateProfileDisplay(); closeModal("editProfileModal"); showToast(t("updatedProfile")); } catch(err) { showToast(t("errorSaving")); } };
+function initMap() { if(map) { map.invalidateSize(); return; } const el = document.getElementById("map"); if(!el) return; map = L.map('map').setView([9.03, 38.74], 7); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map); }
+window.getUserLocation = () => { if(!navigator.geolocation) { showToast(t("notSupported")); return; } navigator.geolocation.getCurrentPosition(async (p) => { await window.setDoc(window.doc(window.db, "locations", currentUser.uid), { lat: p.coords.latitude, lng: p.coords.longitude, userId: currentUser.uid, userName: currentUser.displayName || currentUser.email, updatedAt: Date.now() }); if(map) { map.setView([p.coords.latitude, p.coords.longitude], 13); L.marker([p.coords.latitude, p.coords.longitude]).addTo(map).bindPopup(t("youAreHere")).openPopup(); } showToast(t("locationShared")); }); };
+async function loadChatUsers() { if(!currentUser) return; const ul = document.getElementById("chatUsersList"); if(!ul) return; ul.innerHTML = `<div class="loading"><i class="fa-solid fa-spinner"></i> ${t("loading")}</div>`; const s = await window.getDocs(window.collection(window.db, "users")); let u = []; s.forEach(d => { if(d.id !== currentUser.uid) u.push({ id: d.id, ...d.data() }); }); ul.innerHTML = u.length ? u.map(u => `<div class="user-item" onclick="window.openChat('${u.id}','${escapeHtml(u.name || u.email || 'User')}')"><div class="user-avatar"><i class="fa-solid fa-user"></i></div><div class="user-info"><div class="user-name">${escapeHtml(u.name || u.email || 'User')} ${u.verified ? '<span class="verified-badge">✓</span>' : ''}</div><div class="user-email">${escapeHtml(u.email || '')}</div></div></div>`).join("") : `<div class="empty-state"><i class="fa-solid fa-users"></i><p>${t("noUsers")}</p></div>`; }
+window.openChat = (uid, un) => { currentChatUser = { id: uid, name: un }; document.getElementById("chatUsersList").style.display = "none"; document.getElementById("chatConversation").style.display = "block"; document.getElementById("chatWithName").innerText = un; loadMessages(uid); };
+function backToUsers() { if(messagesUnsubscribe) messagesUnsubscribe(); document.getElementById("chatUsersList").style.display = "block"; document.getElementById("chatConversation").style.display = "none"; currentChatUser = null; }
+function loadMessages(oid) { if(messagesUnsubscribe) messagesUnsubscribe(); const cid = [currentUser.uid, oid].sort().join('_'); const q = window.query(window.collection(window.db, "chats", cid, "messages"), window.orderBy("timestamp", "asc")); messagesUnsubscribe = window.onSnapshot(q, (s) => { const mc = document.getElementById("chatMessages"); if(!mc) return; mc.innerHTML = ""; s.forEach(d => { const m = d.data(); const div = document.createElement("div"); div.className = `chat-message ${m.senderId === currentUser.uid ? 'sent' : 'received'}`; const time = m.timestamp?.toDate ? m.timestamp.toDate().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : ''; div.innerHTML = `<div class="chat-bubble">${escapeHtml(m.text)}</div><div class="chat-time">${time}</div>`; mc.appendChild(div); }); mc.scrollTop = mc.scrollHeight; }); }
+window.sendMessage = async () => { const i = document.getElementById("messageInput"); const t = i?.value.trim(); if(!t || !currentChatUser) return; const cid = [currentUser.uid, currentChatUser.id].sort().join('_'); await window.addDoc(window.collection(window.db, "chats", cid, "messages"), { text: t, senderId: currentUser.uid, senderName: currentUser.displayName || currentUser.email, timestamp: window.serverTimestamp() }); if(i) i.value = ""; };
+window.startChat = (uid, un) => { showPage("chatPage", document.querySelectorAll(".nav-btn")[4]); setTimeout(() => window.openChat(uid, un), 100); };
+window.callNumber = (ph) => { window.location.href = `tel:${ph}`; };
+window.searchPosts = () => { const v = document.getElementById("searchInput")?.value.toLowerCase() || ''; renderPosts(allPosts.filter(p => (p.title||"").toLowerCase().includes(v) || (p.route||"").toLowerCase().includes(v))); };
+window.setFilter = (f, btn) => { currentFilter = f; document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active")); if(btn) btn.classList.add("active"); renderPosts(allPosts); };
+window.sortPosts = (s) => { currentSort = s; renderPosts(allPosts); };
+window.switchView = (v) => { currentView = v; document.getElementById("listViewBtn")?.classList.toggle("active", v==="list"); document.getElementById("gridViewBtn")?.classList.toggle("active", v==="grid"); localStorage.setItem("postView", v); renderPosts(allPosts); };
+window.previewImage = function(e) { const f = e.target.files[0], p = document.getElementById("imgPreview"); if(!p) return; if(f) { const r=new FileReader(); r.onload=ev=>{p.src=ev.target.result;p.style.display="block";}; r.readAsDataURL(f); } else p.style.display="none"; };
+window.calculateCommissionPreview = () => { const p = parseFloat(document.getElementById("price")?.value)||0, pr=document.getElementById("commissionPreview"); if(!pr) return; if(p>0){ document.getElementById("commissionAmountDisplay").innerText=((p*commissionRate)/100).toFixed(2)+" "+t("birr"); document.getElementById("commissionRateDisplay").innerText=commissionRate; pr.style.display="flex"; } else pr.style.display="none"; };
+window.setTheme = function(t) { const a = document.getElementById("app"); if(!a) return; a.classList.remove("theme-ocean","theme-forest","theme-purple","theme-sunset"); if(t!=="default") a.classList.add("theme-"+t); localStorage.setItem("colorTheme",t); document.querySelectorAll(".theme-dot").forEach(d=>d.classList.remove("active")); const dot = document.querySelector(`.theme-dot.${t}`); if(dot) dot.classList.add("active"); };
+window.toggleTheme = () => { const a=document.getElementById("app"), b=document.getElementById("themeSwitch"); if(a&&b){ a.classList.toggle("light-mode",b.checked); localStorage.setItem("theme",b.checked?"light":"dark"); } };
+window.openSettings = () => { document.getElementById("settingsModal").classList.add("active"); if(document.getElementById("drawer")?.classList.contains("active")) toggleDrawer(); };
+window.openAbout = () => document.getElementById("aboutModal").classList.add("active");
+window.openContact = () => document.getElementById("contactModal").classList.add("active");
+window.openAdminPanel = () => { if(!isAdmin()){showToast(t("adminOnly"));return;} showPage("adminPage"); toggleDrawer(); };
+window.openCommissionPanel = () => { showPage("commissionPage"); loadCommissionData(); };
+window.openAnalyticsPage = () => { if(!isAdmin()){showToast(t("adminOnly"));return;} showPage("analyticsPage"); loadAnalytics(); };
+window.openNotifications = () => { showPage("notificationsPage"); loadNotifications(); if(document.getElementById("drawer")?.classList.contains("active")) toggleDrawer(); };
+window.openBookings = () => { showPage("bookingsPage"); loadBookings(); toggleDrawer(); };
+window.openFavorites = () => { showPage("favoritesPage"); loadFavoritesPage(); toggleDrawer(); };
+window.openForum = () => { showPage("forumPage"); loadForum(); toggleDrawer(); };
+window.requestVerification = () => showToast(t("verificationRequested"));
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById("installBanner").classList.add("show"); });
+window.installApp = async () => { if(deferredPrompt){ deferredPrompt.prompt(); const r = await deferredPrompt.userChoice; if(r.outcome==='accepted') document.getElementById("installBanner").classList.remove("show"); deferredPrompt=null; } };
+console.log("Ethio Hub Pro v7.0 - Ready");
 </script>
 </body>
 </html>
